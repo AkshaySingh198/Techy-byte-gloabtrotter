@@ -61,7 +61,7 @@ export default function HeroSection({ onSearch }) {
       Extra bottom padding (pb-40) gives the dropdown ~200px of hero
       background beneath the search box before the dark stats strip starts.
     */
-    <section className="relative flex flex-col bg-[#111827] pt-24 pb-56">
+    <section className="relative flex flex-col bg-[#111827] pt-24 pb-[155px]">
 
       {/* Amalfi Coast background — covers hero + extra space for dropdown */}
       <div
