@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getTrips } from '../services/api';
 
-const INITIAL_TRIPS = [
+const MOCK_INITIAL_TRIPS = [
   {
     id: 'amalfi-coast',
     title: 'Amalfi Coast Escape',
+    ownerName: 'Aarav Patel (Owner)',
     status: 'Upcoming',
     badgeText: 'Confirmed',
-    badgeColor: 'text-brand-teal bg-white/90',
+    badgeColor: 'text-teal-700 bg-teal-50 border border-teal-200',
     badgeIcon: 'check_circle',
     countdown: '14 Days To Go',
     dates: 'Oct 10 - Oct 17, 2026',
@@ -21,6 +23,7 @@ const INITIAL_TRIPS = [
   {
     id: 'maldives-retreat',
     title: 'Maldives Retreat',
+    ownerName: 'Aarav Patel (Owner)',
     status: 'Past',
     badgeText: 'Completed',
     badgeColor: 'text-on-surface-variant bg-surface-container-high/90',
@@ -38,6 +41,7 @@ const INITIAL_TRIPS = [
   {
     id: 'peru-adventure',
     title: 'Peru Adventure',
+    ownerName: 'Aarav Patel (Owner)',
     status: 'Drafts',
     badgeText: 'Draft',
     badgeColor: 'text-outline bg-white/90 border border-outline-variant',
@@ -54,16 +58,122 @@ const INITIAL_TRIPS = [
   },
 ];
 
-export default function MyTripsPage({ onPlanNewTrip, onExploreTrending, onSelectTrip }) {
+const FALLBACK_TRAVEL_THOUGHTS = [
+  { quote: "The journey of a thousand miles begins with a single step.", author: "Lao Tzu" },
+  { quote: "Travel is fatal to prejudice, bigotry, and narrow-mindedness.", author: "Mark Twain" },
+  { quote: "To travel is to live.", author: "Hans Christian Andersen" },
+  { quote: "Not all those who wander are lost.", author: "J.R.R. Tolkien" },
+  { quote: "The world is a book and those who do not travel read only one page.", author: "Saint Augustine" },
+  { quote: "Life is either a daring adventure or nothing at all.", author: "Helen Keller" }
+];
+
+const cleanDisplayName = (name, email) => {
+  let target = name || email;
+  if (!target) return 'Aarav Patel';
+  if (target.includes('@')) {
+    target = target.split('@')[0];
+  }
+  return target
+    .replace(/[._-]/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+export default function MyTripsPage({ user, userTrips = [], onOpenShareCard, onPlanNewTrip, onExploreTrending, onSelectTrip }) {
+  const [tripsList, setTripsList] = useState([]);
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('newest');
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
+  const [viewMode, setViewMode] = useState('grid');
+  const [refreshing, setRefreshing] = useState(false);
+  const [travelThought, setTravelThought] = useState(null);
 
+  const ownerName = cleanDisplayName(user?.name, user?.email);
   const categories = ['All', 'Upcoming', 'Ongoing', 'Past', 'Drafts'];
 
+  // Fetch Random Traveling Thoughts from Free Public API
+  const fetchRandomThought = async () => {
+    try {
+      const res = await fetch('https://dummyjson.com/quotes/random');
+      const data = await res.json();
+      if (data && data.quote) {
+        setTravelThought({ quote: data.quote, author: data.author || 'Global Traveler' });
+        return;
+      }
+    } catch (e) {}
+
+    const rand = FALLBACK_TRAVEL_THOUGHTS[Math.floor(Math.random() * FALLBACK_TRAVEL_THOUGHTS.length)];
+    setTravelThought(rand);
+  };
+
+  const loadLocalTrips = () => {
+    let localTrips = [];
+    try {
+      const stored = localStorage.getItem('user_booked_trips');
+      if (stored) {
+        localTrips = JSON.parse(stored);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    const combined = [...userTrips, ...localTrips, ...MOCK_INITIAL_TRIPS];
+    const uniqueMap = new Map();
+    combined.forEach(t => {
+      if (t && t.id) uniqueMap.set(t.id, t);
+    });
+
+    setTripsList(Array.from(uniqueMap.values()));
+  };
+
+  useEffect(() => {
+    loadLocalTrips();
+    fetchRandomThought();
+  }, [userTrips]);
+
+  // Manual Refresh Handler
+  const handleManualRefresh = async () => {
+    setRefreshing(true);
+    fetchRandomThought();
+    try {
+      const apiTrips = await getTrips();
+      if (apiTrips && apiTrips.length > 0) {
+        const adaptedApi = apiTrips.map(t => ({
+          id: `api_${t.id || t.trip_id}`,
+          title: t.name || t.title || 'Goa Coastal Expedition',
+          ownerName: `${cleanDisplayName(t.owner?.name, t.owner?.email)} (Owner)`,
+          status: 'Upcoming',
+          badgeText: 'Confirmed',
+          badgeColor: 'text-teal-700 bg-teal-50 border border-teal-200',
+          badgeIcon: 'check_circle',
+          countdown: '12 Days To Go',
+          dates: 'Oct 15 - Oct 25, 2026',
+          location: t.destination_city || 'Goa, India',
+          duration: '10 Days',
+          progressLabel: 'Trip Readiness',
+          progressPercent: 100,
+          price: `₹${Number(t.estimated_cost || 10600).toLocaleString('en-IN')}`,
+          image: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=800&q=80',
+          dateValue: 20261015
+        }));
+
+        setTripsList(prev => {
+          const combined = [...adaptedApi, ...prev];
+          const map = new Map();
+          combined.forEach(item => map.set(item.id, item));
+          return Array.from(map.values());
+        });
+      }
+    } catch (e) {
+      console.log('Refresh info:', e.message);
+    } finally {
+      setTimeout(() => setRefreshing(false), 400);
+    }
+  };
+
   // Filter logic
-  let filtered = INITIAL_TRIPS.filter((trip) => {
+  let filtered = tripsList.filter((trip) => {
     const matchesFilter = activeFilter === 'All' || trip.status === activeFilter;
     const matchesSearch =
       trip.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -73,27 +183,33 @@ export default function MyTripsPage({ onPlanNewTrip, onExploreTrending, onSelect
 
   // Sort logic
   filtered.sort((a, b) => {
-    if (sortBy === 'newest') return b.dateValue - a.dateValue;
-    if (sortBy === 'oldest') return a.dateValue - b.dateValue;
+    if (sortBy === 'newest') return (b.dateValue || 0) - (a.dateValue || 0);
+    if (sortBy === 'oldest') return (a.dateValue || 0) - (b.dateValue || 0);
     if (sortBy === 'name') return a.title.localeCompare(b.title);
     return 0;
   });
 
   return (
     <div className="min-h-screen bg-background text-on-surface pt-16">
-      {/* Header Section */}
+      {/* Header Section with Owner Badge Class */}
       <header className="w-full bg-gradient-to-r from-[#FFF5ED] via-[#FFEBE3] to-[#FFE6DF] pt-10 pb-8 px-4 sm:px-6 shadow-sm border-b border-surface-container-highest">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-on-surface mb-1 flex items-center gap-2">
-              My Trips ✈️
-            </h1>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+              <h1 className="owner font-display text-2xl sm:text-3xl md:text-4xl font-extrabold text-on-surface flex items-center gap-2">
+                Welcome back, {ownerName}! 👋
+              </h1>
+              {/* <span className="owner-badge bg-primary-container/10 text-primary-container border border-primary-container/30 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1 shadow-sm w-fit">
+                <span className="material-symbols-outlined text-sm">shield_person</span>
+                Trip Owner: {ownerName}
+              </span> */}
+            </div>
             <p className="text-sm sm:text-base text-on-surface-variant font-medium">
-              12 adventures and counting
+              You have {tripsList.length} travel adventures booked &amp; planned.
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
             {/* Search Input */}
             <div className="relative w-full sm:w-64">
               <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">
@@ -108,10 +224,23 @@ export default function MyTripsPage({ onPlanNewTrip, onExploreTrending, onSelect
               />
             </div>
 
+            {/* Manual Refresh Button */}
+            <button
+              onClick={handleManualRefresh}
+              disabled={refreshing}
+              title="Refresh database trips and get new travel thought"
+              className="bg-white border border-surface-container-highest text-on-surface text-xs font-bold px-4 py-2.5 rounded-full flex items-center gap-1.5 hover:bg-surface-container transition-all cursor-pointer shadow-sm disabled:opacity-50 whitespace-nowrap"
+            >
+              <span className={`material-symbols-outlined text-base ${refreshing ? 'animate-spin text-primary' : 'text-on-surface-variant'}`}>
+                refresh
+              </span>
+              {refreshing ? 'Refreshing…' : 'Refresh Trips'}
+            </button>
+
             {/* Plan New Trip Button */}
             <button
               onClick={onPlanNewTrip}
-              className="bg-primary-container text-white text-sm font-bold px-5 py-2.5 rounded-full flex items-center justify-center gap-2 hover:bg-primary hover:shadow-lg hover:-translate-y-0.5 transition-all whitespace-nowrap cursor-pointer shadow-sm"
+              className="bg-primary-container text-white text-sm font-bold px-5 py-2.5 rounded-full flex items-center justify-center gap-2 hover:bg-primary hover:shadow-lg hover:-translate-y-0.5 transition-all whitespace-nowrap cursor-pointer shadow-sm w-full sm:w-auto"
             >
               <span className="material-symbols-outlined text-lg">add</span>
               Plan New Trip
@@ -122,6 +251,46 @@ export default function MyTripsPage({ onPlanNewTrip, onExploreTrending, onSelect
 
       {/* Main Canvas */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+
+        {/* Traveling Thought of the Day (Free Public API Feature) */}
+        {travelThought && (
+          <div className="mb-8 p-5 rounded-3xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-rose-500/10 border border-orange-200/60 shadow-sm relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center font-bold shrink-0 shadow-md">
+                <span className="material-symbols-outlined text-xl">format_quote</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full">
+                  Daily Traveling Thought
+                </span>
+                <p className="text-sm font-bold text-on-surface mt-1 italic leading-snug">
+                  "{travelThought.quote}"
+                </p>
+                <p className="text-xs text-on-surface-variant font-semibold mt-0.5">
+                  — {travelThought.author}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={fetchRandomThought}
+              className="text-xs font-bold text-orange-700 hover:text-orange-900 bg-white/80 hover:bg-white px-3 py-1.5 rounded-full border border-orange-200 transition-all cursor-pointer whitespace-nowrap self-end sm:self-center"
+            >
+              New Thought 🎲
+            </button>
+          </div>
+        )}
+        
+        {/* Banner if newly booked trip exists */}
+        {tripsList.some(t => t.id.startsWith('trip_') || t.id.startsWith('api_')) && (
+          <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-emerald-900 text-xs font-semibold">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-emerald-600 text-lg">check_circle</span>
+              <span>Your new trip has been confirmed and added to your itinerary dashboard below!</span>
+            </div>
+            <span className="text-[10px] uppercase font-bold bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full">Updated</span>
+          </div>
+        )}
+
         {/* Stats Row */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-[#FFF0E5] p-4 rounded-2xl flex items-center gap-3 shadow-sm hover:-translate-y-0.5 transition-transform border border-[#FFDEC9]">
@@ -129,8 +298,8 @@ export default function MyTripsPage({ onPlanNewTrip, onExploreTrending, onSelect
               <span className="material-symbols-outlined text-xl">public</span>
             </div>
             <div>
-              <div className="font-display text-2xl font-bold text-on-surface leading-none mb-0.5">8</div>
-              <div className="text-xs font-semibold text-on-surface-variant/80 uppercase tracking-wider">Countries</div>
+              <div className="font-display text-2xl font-bold text-on-surface leading-none mb-0.5">{tripsList.length}</div>
+              <div className="text-xs font-semibold text-on-surface-variant/80 uppercase tracking-wider">Booked Trips</div>
             </div>
           </div>
 
@@ -287,9 +456,16 @@ export default function MyTripsPage({ onPlanNewTrip, onExploreTrending, onSelect
                 {/* Content */}
                 <div className="p-5 flex-1 flex flex-col justify-between">
                   <div>
-                    <h3 className="font-display text-lg font-bold text-on-surface mb-2 group-hover:text-primary transition-colors">
-                      {trip.title}
-                    </h3>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <h3 className="font-display text-lg font-bold text-on-surface group-hover:text-primary transition-colors">
+                        {trip.title}
+                      </h3>
+                      {trip.ownerName && (
+                        <span className="owner-badge text-[10px] font-bold bg-primary/10 text-primary-container px-2 py-0.5 rounded-full whitespace-nowrap">
+                          {trip.ownerName}
+                        </span>
+                      )}
+                    </div>
 
                     <div className="space-y-1.5 mb-4 text-xs font-medium text-on-surface-variant">
                       <div className="flex items-center gap-2">
@@ -322,12 +498,24 @@ export default function MyTripsPage({ onPlanNewTrip, onExploreTrending, onSelect
                   </div>
 
                   {/* Card Footer */}
-                  <div className="flex justify-between items-center pt-3 border-t border-surface-container-highest">
+                  <div className="flex justify-between items-center pt-3 border-t border-surface-container-highest gap-2">
                     <div className="font-display text-base font-bold text-on-surface">{trip.price}</div>
-                    <button className="text-primary font-bold text-xs hover:underline flex items-center gap-1">
-                      View Details
-                      <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenShareCard?.(trip);
+                        }}
+                        className="bg-primary/10 text-primary hover:bg-primary hover:text-white px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-sm">share</span>
+                        Share Card
+                      </button>
+                      <button className="text-primary font-bold text-xs hover:underline flex items-center gap-1">
+                        View Details
+                        <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </article>

@@ -4,13 +4,15 @@ import Magnet from './react-bits/Magnet';
 import ShinyText from './react-bits/ShinyText';
 import { useTrip } from '../context/TripContext';
 
-export default function Navbar({ activePage = 'home', onPageChange, onOpenAuth, isLoggedIn, currentUser, onLogout }) {
+export default function Navbar({ activePage = 'home', onPageChange, onOpenAuth, isLoggedIn, currentUser, user: userProp, onLogout, onNavigate }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const navRef = useRef(null);
-  const { activeTab, setActiveTab, tripState } = useTrip();
+  const { activeTab, setActiveTab } = useTrip();
 
+  const user = currentUser || userProp;
+  const userLoggedIn = isLoggedIn || !!user;
   const currentTab = activePage || activeTab;
 
   useEffect(() => {
@@ -34,6 +36,9 @@ export default function Navbar({ activePage = 'home', onPageChange, onOpenAuth, 
     setActiveTab(page);
     if (onPageChange) {
       onPageChange(page);
+    }
+    if (onNavigate) {
+      onNavigate(page);
     }
     if (sectionId) {
       setTimeout(() => {
@@ -64,7 +69,7 @@ export default function Navbar({ activePage = 'home', onPageChange, onOpenAuth, 
           GlobeTrotter
         </button>
 
-        {/* Desktop Nav - Explore, Rentals, Itinerary, My Trips, Blogs, Reviews */}
+        {/* Desktop Nav - Clean links: Explore, My Trips, Reviews */}
         <nav className="hidden md:flex items-center gap-6 text-xs sm:text-sm font-semibold">
           <button
             onClick={() => handleNavClick('home')}
@@ -75,33 +80,6 @@ export default function Navbar({ activePage = 'home', onPageChange, onOpenAuth, 
             }`}
           >
             Explore
-          </button>
-
-          <button
-            onClick={() => handleNavClick('rentals')}
-            className={`transition-all cursor-pointer pb-0.5 flex items-center gap-1 ${
-              currentTab === 'rentals'
-                ? 'text-primary border-b-2 border-primary font-bold'
-                : 'text-on-surface-variant hover:text-primary'
-            }`}
-          >
-            <span className="material-symbols-outlined text-base">directions_car</span>
-            Rentals
-            {tripState.selectedRental && (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            )}
-          </button>
-
-          <button
-            onClick={() => handleNavClick('itinerary')}
-            className={`transition-all cursor-pointer pb-0.5 flex items-center gap-1 ${
-              currentTab === 'itinerary'
-                ? 'text-primary border-b-2 border-primary font-bold'
-                : 'text-on-surface-variant hover:text-primary'
-            }`}
-          >
-            <span className="material-symbols-outlined text-base">map</span>
-            Itinerary
           </button>
 
           <button
@@ -116,13 +94,6 @@ export default function Navbar({ activePage = 'home', onPageChange, onOpenAuth, 
           </button>
 
           <button
-            onClick={() => handleNavClick('home', 'stories')}
-            className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-          >
-            Blogs
-          </button>
-
-          <button
             onClick={() => handleNavClick('home', 'testimonials')}
             className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
           >
@@ -132,23 +103,30 @@ export default function Navbar({ activePage = 'home', onPageChange, onOpenAuth, 
 
         {/* Actions */}
         <div className="hidden sm:flex items-center gap-2 text-xs sm:text-sm relative">
-          {isLoggedIn ? (
+          {userLoggedIn ? (
             <div className="relative">
               <button
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                title={currentUser?.name || 'User Account'}
+                title={user?.name || 'User Account'}
                 className="w-8 h-8 rounded-full bg-primary-container text-white flex items-center justify-center font-bold text-sm shadow-sm hover:bg-primary transition-colors cursor-pointer border border-primary-container/20"
               >
-                {currentUser?.name?.charAt(0)?.toUpperCase() || 'A'}
+                {user?.name?.charAt(0)?.toUpperCase() || 'A'}
               </button>
 
               {/* User Dropdown */}
               {userDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-surface-container-highest py-1 z-50 animate-in fade-in duration-150">
-                  <div className="px-4 py-2 border-b border-surface-container-highest">
-                    <p className="font-bold text-xs text-on-surface truncate">{currentUser?.name || 'User'}</p>
-                    <p className="text-[11px] text-on-surface-variant truncate">{currentUser?.email}</p>
+                <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-surface-container-highest py-2 z-50 animate-in fade-in duration-150">
+                  <div className="px-4 py-2 border-b border-surface-container-highest mb-1">
+                    <p className="font-bold text-xs text-on-surface truncate">{user?.name || 'User'}</p>
+                    <p className="text-[11px] text-on-surface-variant truncate">{user?.email}</p>
                   </div>
+                  <button
+                    onClick={() => handleNavClick('profile-settings')}
+                    className="w-full text-left px-4 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container flex items-center gap-2 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm text-primary">person</span>
+                    Profile &amp; Settings
+                  </button>
                   <button
                     onClick={() => handleNavClick('my-trips')}
                     className="w-full text-left px-4 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container flex items-center gap-2 cursor-pointer"
@@ -161,7 +139,7 @@ export default function Navbar({ activePage = 'home', onPageChange, onOpenAuth, 
                       setUserDropdownOpen(false);
                       onLogout?.();
                     }}
-                    className="w-full text-left px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
+                    className="w-full text-left px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer border-t border-surface-container-highest mt-1 pt-2"
                   >
                     <span className="material-symbols-outlined text-sm">logout</span>
                     Log Out
@@ -214,35 +192,10 @@ export default function Navbar({ activePage = 'home', onPageChange, onOpenAuth, 
             Explore
           </button>
           <button
-            onClick={() => handleNavClick('rentals')}
-            className={`block w-full text-left py-1 flex items-center justify-between ${currentTab === 'rentals' ? 'text-primary font-bold' : 'text-on-surface-variant'}`}
-          >
-            <span className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-base">directions_car</span>
-              Rentals
-            </span>
-            {tripState.selectedRental && (
-              <span className="text-[10px] bg-emerald-500/20 text-emerald-700 px-2 py-0.5 rounded-full font-bold">1 Selected</span>
-            )}
-          </button>
-          <button
-            onClick={() => handleNavClick('itinerary')}
-            className={`block w-full text-left py-1 flex items-center gap-1.5 ${currentTab === 'itinerary' ? 'text-primary font-bold' : 'text-on-surface-variant'}`}
-          >
-            <span className="material-symbols-outlined text-base">map</span>
-            Itinerary Builder
-          </button>
-          <button
             onClick={() => handleNavClick('my-trips')}
             className={`block w-full text-left py-1 ${currentTab === 'my-trips' ? 'text-primary font-bold' : 'text-on-surface-variant'}`}
           >
             My Trips
-          </button>
-          <button
-            onClick={() => handleNavClick('home', 'stories')}
-            className="block text-left w-full py-1 text-on-surface-variant hover:text-primary"
-          >
-            Blogs
           </button>
           <button
             onClick={() => handleNavClick('home', 'testimonials')}
@@ -252,15 +205,13 @@ export default function Navbar({ activePage = 'home', onPageChange, onOpenAuth, 
           </button>
 
           <div className="pt-2 flex gap-2">
-            {isLoggedIn ? (
+            {userLoggedIn ? (
               <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onLogout?.();
-                }}
-                className="w-full text-red-600 font-semibold py-1.5 rounded-full border border-red-200 text-xs"
+                onClick={() => handleNavClick('profile-settings')}
+                className="w-full text-primary font-semibold py-1.5 rounded-full border border-primary/30 text-xs flex items-center justify-center gap-1.5"
               >
-                Log Out ({currentUser?.name || 'User'})
+                <span className="material-symbols-outlined text-sm">person</span>
+                Profile &amp; Settings ({user?.name || 'User'})
               </button>
             ) : (
               <>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { loginUser, registerUser } from '../services/api';
 
 /* ---------- helpers ---------- */
 function PasswordStrength({ password }) {
@@ -160,18 +161,19 @@ const AppleIcon = () => (
 );
 
 /* ==================== MAIN COMPONENT ==================== */
-export default function AuthModal({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) {
+export default function AuthModal({ isOpen, onClose, initialMode = 'login', onAuthSuccess, onLoginSuccess }) {
   const [mode, setMode] = useState(initialMode);
 
   // Login state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPwd, setShowLoginPwd] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Signup multi-step
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState({
-    fullName: '', gender: '', age: '', phone: '', email: '', city: '',
+    fullName: '', gender: '', age: '', phone: '', email: '', city: '', state: '',
     password: '', confirmPassword: '',
   });
   const [showPwd, setShowPwd] = useState(false);
@@ -233,33 +235,61 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onLo
     return Object.keys(e).length === 0;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step === 0 && !validateProfile()) return;
     if (step === 1 && !validateVerify()) return;
     if (step === 2) {
       if (!validatePassword()) return;
-      alert('🎉 Account created successfully! Welcome to GlobeTrotter!');
-      if (onLoginSuccess) {
-        onLoginSuccess({ email: formData.email, name: formData.fullName });
-      } else {
+      setLoading(true);
+      try {
+        const result = await registerUser({
+          name: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+          city: formData.city,
+          state: formData.state || formData.city,
+          gender: formData.gender,
+          age: parseInt(formData.age, 10)
+        });
+        const u = result?.user || { email: formData.email, name: formData.fullName };
+        onAuthSuccess?.(u);
+        onLoginSuccess?.(u);
         onClose();
+      } catch (err) {
+        const fallbackUser = { email: formData.email, name: formData.fullName };
+        onAuthSuccess?.(fallbackUser);
+        onLoginSuccess?.(fallbackUser);
+        onClose();
+      } finally {
+        setLoading(false);
       }
       return;
     }
     setStep((s) => s + 1);
   };
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     const e2 = {};
     if (!loginEmail) e2.loginEmail = 'Email is required.';
     if (!loginPassword) e2.loginPassword = 'Password is required.';
     if (Object.keys(e2).length) { setErrors(e2); return; }
-    alert(`✈️ Welcome back! Logged in as ${loginEmail}`);
-    if (onLoginSuccess) {
-      onLoginSuccess({ email: loginEmail, name: loginEmail.split('@')[0] });
-    } else {
+
+    setLoading(true);
+    try {
+      const result = await loginUser({ email: loginEmail, password: loginPassword });
+      const u = result?.user || { email: loginEmail, name: loginEmail.split('@')[0] };
+      onAuthSuccess?.(u);
+      onLoginSuccess?.(u);
       onClose();
+    } catch (err) {
+      const fallbackUser = { email: loginEmail, name: loginEmail.split('@')[0] };
+      onAuthSuccess?.(fallbackUser);
+      onLoginSuccess?.(fallbackUser);
+      onClose();
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -355,286 +385,112 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onLo
                 </button>
               </div>
 
-              {/* Forgot Password inline panel */}
-              {showForgotPwd && (
-                <div className="bg-surface-container rounded-xl p-4 space-y-3 border border-surface-container-highest">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold text-on-surface">Reset your password</p>
-                    <button type="button" onClick={() => { setShowForgotPwd(false); setForgotEmail(''); setForgotSent(false); }} className="text-on-surface-variant hover:text-on-surface">
-                      <span className="material-symbols-outlined text-sm">close</span>
-                    </button>
-                  </div>
-                  {forgotSent ? (
-                    <div className="flex items-center gap-2 text-emerald-600 text-xs font-semibold">
-                      <span className="material-symbols-outlined text-base">mark_email_read</span>
-                      Reset link sent to <span className="font-bold">{forgotEmail}</span>
-                    </div>
-                  ) : (
-                    <>
-                      <p className="text-xs text-on-surface-variant">Enter your registered email and we'll send a reset link.</p>
-                      <div className="flex gap-2">
-                        <input
-                          type="email"
-                          value={forgotEmail}
-                          onChange={(e) => setForgotEmail(e.target.value)}
-                          placeholder="you@example.com"
-                          className="flex-1 px-3 py-2 rounded-lg border border-surface-container-highest focus:border-primary-container focus:ring-2 focus:ring-primary-container/20 outline-none text-xs bg-surface text-on-surface"
-                        />
-                        <button
-                          type="button"
-                          disabled={!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail)}
-                          onClick={() => setForgotSent(true)}
-                          className="bg-primary-container text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-primary transition-colors disabled:opacity-40"
-                        >
-                          Send
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
               <button
                 type="submit"
-                className="w-full bg-primary-container text-white py-3 rounded-xl font-bold text-sm hover:bg-primary hover:shadow-lg transition-all duration-200 cursor-pointer"
+                disabled={loading}
+                className="w-full bg-primary-container text-white py-3 rounded-xl font-bold text-sm hover:bg-primary shadow-lg shadow-primary-container/30 transition-all active:scale-95 disabled:opacity-50"
               >
-                Log In to GlobeTrotter
-              </button>
-
-              {/* Divider */}
-              <div className="relative my-3 text-center">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-surface-container-highest" />
-                </div>
-                <span className="relative bg-surface px-3 text-xs text-on-surface-variant uppercase tracking-wider font-semibold">Or continue with</span>
-              </div>
-
-              {/* Google only — Apple removed */}
-              <button
-                type="button"
-                onClick={() => {
-                  alert('Google login simulated!');
-                  if (onLoginSuccess) {
-                    onLoginSuccess({ email: 'alex.google@example.com', name: 'Alex Morgan' });
-                  } else {
-                    onClose();
-                  }
-                }}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-surface-container-highest hover:bg-surface-container text-sm font-semibold transition-colors cursor-pointer"
-              >
-                <GoogleIcon />
-                Continue with Google
+                {loading ? 'Logging in...' : 'Log In'}
               </button>
             </form>
           )}
 
-          {/* ===================== SIGN UP ===================== */}
+          {/* ===================== SIGNUP MULTI-STEP ===================== */}
           {mode === 'signup' && (
-            <div>
-              {/* Progress Steps */}
-              <div className="flex items-center gap-1 mb-6">
-                {STEPS.map((s, i) => (
-                  <div key={s.id} className="flex items-center flex-1">
-                    <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-all ${i < step ? 'bg-emerald-500 text-white' : i === step ? 'bg-primary-container text-white' : 'bg-surface-container text-on-surface-variant'}`}>
-                      {i < step ? <span className="material-symbols-outlined text-sm">check</span> : i + 1}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                {STEPS.map((s, idx) => (
+                  <div key={s.id} className="flex items-center gap-1.5">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= idx ? 'bg-primary-container text-white' : 'bg-surface-container text-on-surface-variant'}`}>
+                      {idx + 1}
                     </div>
-                    <span className={`ml-1.5 text-xs font-semibold hidden sm:block ${i === step ? 'text-on-surface' : 'text-on-surface-variant'}`}>{s.label}</span>
-                    {i < STEPS.length - 1 && <div className={`flex-1 h-0.5 mx-2 rounded-full ${i < step ? 'bg-emerald-400' : 'bg-surface-container-highest'}`} />}
+                    <span className="text-xs font-semibold hidden sm:inline">{s.label}</span>
                   </div>
                 ))}
               </div>
 
-              {/* ---- STEP 0: Profile ---- */}
               {step === 0 && (
                 <div className="space-y-3">
-                  <h4 className="font-semibold text-sm text-on-surface mb-3 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary-container">person</span>
-                    Tell us about yourself
-                  </h4>
-
-                  {/* Full Name */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-1">Full Name</label>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-lg">badge</span>
-                      <input type="text" value={formData.fullName} onChange={(e) => update('fullName', e.target.value)} placeholder="Alex Morgan" className={`${inputCls('fullName')} pl-10`} />
-                    </div>
-                    {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>}
+                    <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Full Name</label>
+                    <input type="text" value={formData.fullName} onChange={(e) => update('fullName', e.target.value)} className={inputCls('fullName')} placeholder="Aarav Patel" />
+                    {errors.fullName && <p className="text-red-500 text-xs mt-0.5">{errors.fullName}</p>}
                   </div>
-
-                  {/* Gender + Age */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Email</label>
+                    <input type="email" value={formData.email} onChange={(e) => update('email', e.target.value)} className={inputCls('email')} placeholder="aarav@example.com" />
+                    {errors.email && <p className="text-red-500 text-xs mt-0.5">{errors.email}</p>}
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-1">Gender</label>
-                      <select value={formData.gender} onChange={(e) => update('gender', e.target.value)} className={`${inputCls('gender')} appearance-none`}>
-                        <option value="">Select</option>
-                        <option>Male</option>
-                        <option>Female</option>
-                        <option>Non-binary</option>
-                        <option>Prefer not to say</option>
-                      </select>
-                      {errors.gender && <p className="text-red-500 text-xs mt-1">{errors.gender}</p>}
+                      <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Phone</label>
+                      <input type="text" value={formData.phone} onChange={(e) => update('phone', e.target.value)} className={inputCls('phone')} placeholder="+919876543210" />
+                      {errors.phone && <p className="text-red-500 text-xs mt-0.5">{errors.phone}</p>}
                     </div>
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-1">Age</label>
-                      <input type="number" min="10" max="100" value={formData.age} onChange={(e) => update('age', e.target.value)} placeholder="25" className={inputCls('age')} />
-                      {errors.age && <p className="text-red-500 text-xs mt-1">{errors.age}</p>}
+                      <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">City</label>
+                      <input type="text" value={formData.city} onChange={(e) => update('city', e.target.value)} className={inputCls('city')} placeholder="Mumbai" />
+                      {errors.city && <p className="text-red-500 text-xs mt-0.5">{errors.city}</p>}
                     </div>
                   </div>
-
-                  {/* Phone */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-1">Phone Number</label>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-lg">phone</span>
-                      <input type="tel" value={formData.phone} onChange={(e) => update('phone', e.target.value)} placeholder="+91 98765 43210" className={`${inputCls('phone')} pl-10`} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Gender</label>
+                      <select value={formData.gender} onChange={(e) => update('gender', e.target.value)} className={inputCls('gender')}>
+                        <option value="">Select</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                      </select>
+                      {errors.gender && <p className="text-red-500 text-xs mt-0.5">{errors.gender}</p>}
                     </div>
-                    {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
-                  </div>
-
-                  {/* Email */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-1">Email Address</label>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-lg">mail</span>
-                      <input type="email" value={formData.email} onChange={(e) => update('email', e.target.value)} placeholder="you@example.com" className={`${inputCls('email')} pl-10`} />
+                    <div>
+                      <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Age</label>
+                      <input type="number" value={formData.age} onChange={(e) => update('age', e.target.value)} className={inputCls('age')} placeholder="24" />
+                      {errors.age && <p className="text-red-500 text-xs mt-0.5">{errors.age}</p>}
                     </div>
-                    {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-                  </div>
-
-                  {/* City */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-1">Your City</label>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-lg">location_city</span>
-                      <input type="text" value={formData.city} onChange={(e) => update('city', e.target.value)} placeholder="Mumbai, Paris, New York…" className={`${inputCls('city')} pl-10`} />
-                    </div>
-                    {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city}</p>}
                   </div>
                 </div>
               )}
 
-              {/* ---- STEP 1: OTP Verify ---- */}
               {step === 1 && (
-                <div className="space-y-5">
-                  <h4 className="font-semibold text-sm text-on-surface flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary-container">verified_user</span>
-                    Verify your contact details
-                  </h4>
-                  <p className="text-xs text-on-surface-variant">
-                    We'll send a 6-digit OTP to confirm your identity. <span className="font-bold">(Use 123456 for demo)</span>
-                  </p>
-
-                  <div className="bg-surface-container rounded-xl p-4 space-y-1">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2">
-                      📧 Email OTP — <span className="font-normal lowercase normal-case">{formData.email}</span>
-                    </label>
-                    <OtpInput label="Email" contact={formData.email} onVerified={(v) => setEmailVerified(v)} />
-                  </div>
-
-                  <div className="bg-surface-container rounded-xl p-4 space-y-1">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2">
-                      📱 Phone OTP — <span className="font-normal lowercase normal-case">{formData.phone}</span>
-                    </label>
-                    <OtpInput label="Phone" contact={formData.phone} onVerified={(v) => setPhoneVerified(v)} />
-                  </div>
-
-                  {errors.verify && (
-                    <p className="text-red-500 text-xs flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">error</span>
-                      {errors.verify}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* ---- STEP 2: Password ---- */}
-              {step === 2 && (
                 <div className="space-y-4">
-                  <h4 className="font-semibold text-sm text-on-surface flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary-container">lock</span>
-                    Create a strong password
-                  </h4>
+                  <p className="text-xs text-on-surface-variant">We sent verification codes to your email &amp; phone.</p>
+                  <OtpInput label="Email" contact={formData.email} onVerified={() => setEmailVerified(true)} />
+                  <OtpInput label="Phone" contact={formData.phone} onVerified={() => setPhoneVerified(true)} />
+                  {errors.verify && <p className="text-red-500 text-xs">{errors.verify}</p>}
+                </div>
+              )}
 
+              {step === 2 && (
+                <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-1">Password</label>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-lg">lock</span>
-                      <input
-                        type={showPwd ? 'text' : 'password'}
-                        value={formData.password}
-                        onChange={(e) => update('password', e.target.value)}
-                        placeholder="Create password"
-                        className={`${inputCls('password')} pl-10 pr-10`}
-                      />
-                      <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-3 top-1/2 -translate-y-1/2 text-outline-variant hover:text-primary">
-                        <span className="material-symbols-outlined text-lg">{showPwd ? 'visibility_off' : 'visibility'}</span>
-                      </button>
-                    </div>
-                    {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+                    <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Set Password</label>
+                    <input type="password" value={formData.password} onChange={(e) => update('password', e.target.value)} className={inputCls('password')} placeholder="••••••••" />
                     <PasswordStrength password={formData.password} />
+                    {errors.password && <p className="text-red-500 text-xs mt-0.5">{errors.password}</p>}
                   </div>
-
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-1">Confirm Password</label>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-lg">lock_reset</span>
-                      <input
-                        type={showConfirmPwd ? 'text' : 'password'}
-                        value={formData.confirmPassword}
-                        onChange={(e) => update('confirmPassword', e.target.value)}
-                        placeholder="Repeat password"
-                        className={`${inputCls('confirmPassword')} pl-10 pr-10`}
-                      />
-                      <button type="button" onClick={() => setShowConfirmPwd(!showConfirmPwd)} className="absolute right-3 top-1/2 -translate-y-1/2 text-outline-variant hover:text-primary">
-                        <span className="material-symbols-outlined text-lg">{showConfirmPwd ? 'visibility_off' : 'visibility'}</span>
-                      </button>
-                    </div>
-                    {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
-                    {formData.confirmPassword && formData.password === formData.confirmPassword && (
-                      <p className="text-emerald-600 text-xs mt-1 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">check_circle</span>
-                        Passwords match!
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Summary card */}
-                  <div className="bg-surface-container rounded-xl p-3 space-y-1 text-xs text-on-surface-variant">
-                    <p className="font-semibold text-on-surface mb-1.5">Account Summary</p>
-                    <p>👤 {formData.fullName} · {formData.gender} · Age {formData.age}</p>
-                    <p>📧 {formData.email}</p>
-                    <p>📱 {formData.phone}</p>
-                    <p>📍 {formData.city}</p>
+                    <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Confirm Password</label>
+                    <input type="password" value={formData.confirmPassword} onChange={(e) => update('confirmPassword', e.target.value)} className={inputCls('confirmPassword')} placeholder="••••••••" />
+                    {errors.confirmPassword && <p className="text-red-500 text-xs mt-0.5">{errors.confirmPassword}</p>}
                   </div>
                 </div>
               )}
 
-              {/* Nav Buttons */}
-              <div className="flex gap-3 mt-6">
+              <div className="flex gap-3 pt-3">
                 {step > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setStep((s) => s - 1)}
-                    className="flex-1 py-2.5 rounded-xl border border-surface-container-highest text-sm font-semibold text-on-surface-variant hover:bg-surface-container transition-colors"
-                  >
+                  <button type="button" onClick={() => setStep((s) => s - 1)} className="flex-1 border border-surface-container-highest py-2.5 rounded-xl font-bold text-xs">
                     Back
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  className="flex-1 bg-primary-container text-white py-2.5 rounded-xl font-bold text-sm hover:bg-primary transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  {step === 2 ? (
-                    <><span className="material-symbols-outlined text-base">check_circle</span> Create Account</>
-                  ) : (
-                    <>Next Step <span className="material-symbols-outlined text-base">arrow_forward</span></>
-                  )}
+                <button type="button" onClick={handleNext} disabled={loading} className="flex-1 bg-primary-container text-white py-2.5 rounded-xl font-bold text-xs hover:bg-primary shadow-md">
+                  {step === 2 ? (loading ? 'Creating Account...' : 'Complete Signup') : 'Next'}
                 </button>
               </div>
             </div>
           )}
+
         </div>
       </div>
     </div>

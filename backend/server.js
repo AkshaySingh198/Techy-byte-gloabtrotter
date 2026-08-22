@@ -58,6 +58,8 @@ app.get('/api/v1/health', (req, res) => {
   });
 });
 
+const paymentRoutes = require('./routes/payment.routes');
+
 // API v1 Router Mounts
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/trips', tripsRoutes);
@@ -71,6 +73,7 @@ app.use('/api/v1/blogs', blogsRoutes);
 app.use('/api/v1/festivals', festivalsRoutes);
 app.use('/api/v1/settings', settingsRoutes);
 app.use('/api/v1/share-card', shareCardRoutes);
+app.use('/api/v1/payments', paymentRoutes);
 
 // Centralized Error Handling Middleware
 app.use(errorHandler);

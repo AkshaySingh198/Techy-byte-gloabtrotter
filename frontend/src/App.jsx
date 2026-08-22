@@ -14,6 +14,19 @@ import Footer from './components/Footer';
 import AuthModal from './components/AuthModal';
 import DestinationModal from './components/DestinationModal';
 import PlanTripModal from './components/PlanTripModal';
+import ShareCardModal from './components/ShareCardModal';
+import BlogEditorModal from './components/BlogEditorModal';
+import PaymentModal from './components/PaymentModal';
+
+import TravelOptions from './pages/TravelOptions';
+import HotelBookingPage from './pages/HotelBookingPage';
+import FinalItineraryPage from './pages/FinalItineraryPage';
+import TripCalendarTimeline from './pages/TripCalendarTimeline';
+import SharedItinerary from './pages/SharedItinerary';
+import ProfileSettings from './pages/ProfileSettings';
+import BottomToastBar from './components/BottomToastBar';
+
+import { getMe, logout, createTrip } from './services/api';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -22,19 +35,38 @@ function MainApp() {
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [selectedTrip, setSelectedTrip] = useState(null);
 
-  // Authentication State
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [shareCardOpen, setShareCardOpen] = useState(false);
+  const [blogEditorOpen, setBlogEditorOpen] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  
+  // Package Selections
+  const [selectedTransport, setSelectedTransport] = useState(null);
+  const [selectedHotel, setSelectedHotel] = useState(null);
+  const [pendingPaymentTrip, setPendingPaymentTrip] = useState({ id: 1, name: 'Goa Coastal Expedition', amount: 10600 });
+  const [userTrips, setUserTrips] = useState([]);
 
-  // Pending Actions
-  const [pendingNavigation, setPendingNavigation] = useState(null);
+  // Active view
+  const [currentView, setCurrentView] = useState('home');
+  const [searchParams, setSearchParams] = useState(null);
+
+  // Auth state
+  const [user, setUser] = useState(null);
   const [pendingSearch, setPendingSearch] = useState(null);
-  const [activeSearch, setActiveSearch] = useState(null);
 
   const { activeTab, setActiveTab, updateTrip } = useTrip();
 
   useEffect(() => {
-    if (activeTab === 'home') {
+    getMe()
+      .then((userData) => {
+        setUser(userData);
+      })
+      .catch(() => {
+        setUser(null);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (currentView === 'home' || activeTab === 'home') {
       const sections = document.querySelectorAll('section');
       sections.forEach((sec) => {
         gsap.fromTo(
@@ -55,125 +87,203 @@ function MainApp() {
       });
     }
     return () => ScrollTrigger.getAll().forEach((t) => t.kill());
-  }, [activeTab]);
-
-  // Handle Navigation with Auth Gate
-  const handlePageChange = (page) => {
-    if ((page === 'my-trips' || page === 'trip-detail') && !isLoggedIn) {
-      setPendingNavigation(page);
-      setAuthModal({ isOpen: true, mode: 'login' });
-      return;
-    }
-    setActiveTab(page);
-  };
+  }, [currentView, activeTab]);
 
   const handleOpenAuth = (mode = 'login') => {
     setAuthModal({ isOpen: true, mode });
   };
 
-  // When user submits search in HeroSection
-  const handleSearchSubmit = (searchParams) => {
-    updateTrip({
-      fromCity: searchParams.from,
-      toCity: searchParams.to,
-    });
-
-    if (!isLoggedIn) {
-      setPendingSearch(searchParams);
+  const handleSearchSubmit = (params) => {
+    setSearchParams(params);
+    if (params?.from && params?.to) {
+      updateTrip({ fromCity: params.from, toCity: params.to });
+    }
+    if (!user) {
+      setPendingSearch(params);
       setAuthModal({ isOpen: true, mode: 'login' });
     } else {
-      setActiveSearch(searchParams);
+      setCurrentView('travel-options');
     }
   };
 
-  // Login / Signup Success Callback
-  const handleLoginSuccess = (userData) => {
-    setIsLoggedIn(true);
-    setCurrentUser(userData || { name: 'Alex Morgan', email: 'alex@example.com' });
-    setAuthModal({ isOpen: false, mode: 'login' });
-
-    if (pendingNavigation) {
-      setActiveTab(pendingNavigation);
-      setPendingNavigation(null);
-    } else if (pendingSearch) {
-      setActiveSearch(pendingSearch);
+  const handleAuthSuccess = (userData) => {
+    setUser(userData);
+    if (pendingSearch) {
+      setSearchParams(pendingSearch);
+      setCurrentView('travel-options');
       setPendingSearch(null);
     }
   };
 
-  // Logout Handler
   const handleLogout = () => {
-    setIsLoggedIn(false);
-    setCurrentUser(null);
-    if (activeTab === 'my-trips' || activeTab === 'trip-detail') {
-      setActiveTab('home');
-    }
+    logout();
+    setUser(null);
+    setCurrentView('home');
+    setActiveTab('home');
   };
 
-  // Modal Dismiss without completing Auth
-  const handleAuthClose = () => {
-    setAuthModal({ isOpen: false, mode: 'login' });
-    setPendingNavigation(null);
-    setPendingSearch(null);
+  const handlePageNavigate = (view) => {
+    // Unauthenticated users can only access the Explore tab ('home')
+    if (!user && view !== 'home') {
+      setAuthModal({ isOpen: true, mode: 'login' });
+      return;
+    }
+
+    if (view === 'blogs') {
+      setBlogEditorOpen(true);
+      return;
+    }
+    setCurrentView(view);
+    setActiveTab(view);
+  };
+
+  const handlePaymentConfirmed = async (receiptData) => {
+    const sDate = searchParams?.startDate || '2026-10-15';
+    const eDate = searchParams?.endDate || '2026-10-25';
+    const destination = searchParams?.toCity || searchParams?.to || 'Goa';
+
+    const newTrip = {
+      id: `trip_${Date.now()}`,
+      title: pendingPaymentTrip.name || `${destination} Expedition`,
+      status: 'Upcoming',
+      badgeText: 'Confirmed',
+      badgeColor: 'text-teal-700 bg-teal-50 border border-teal-200',
+      badgeIcon: 'check_circle',
+      countdown: 'Upcoming',
+      dates: `${sDate} to ${eDate}`,
+      location: `${destination}, India`,
+      duration: 'Custom Duration',
+      progressLabel: 'Trip Readiness',
+      progressPercent: 100,
+      price: `₹${Number(pendingPaymentTrip.amount || 10600).toLocaleString('en-IN')}`,
+      image: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=800&q=80',
+      dateValue: parseInt(sDate.replace(/-/g, ''), 10)
+    };
+
+    setUserTrips(prev => [newTrip, ...prev]);
+
+    // Also attempt saving to database API with user dates
+    try {
+      await createTrip({
+        name: newTrip.title,
+        start_date: sDate,
+        end_date: eDate,
+        description: `Paid travel package to ${destination}`,
+        visibility: 'public'
+      });
+    } catch (e) {
+      console.log('Database trip sync fallback:', e.message);
+    }
+
+    setCurrentView('my-trips');
   };
 
   return (
     <div className="min-h-screen bg-background text-on-background flex flex-col font-sans selection:bg-primary-container selection:text-white relative">
-      {/* Navbar */}
+
+      {/* Top Navbar */}
       <Navbar
-        activePage={activeTab}
-        onPageChange={handlePageChange}
+        activePage={currentView}
+        onPageChange={handlePageNavigate}
         onOpenAuth={handleOpenAuth}
-        isLoggedIn={isLoggedIn}
-        currentUser={currentUser}
+        isLoggedIn={!!user}
+        user={user}
+        currentUser={user}
         onLogout={handleLogout}
+        onNavigate={handlePageNavigate}
       />
 
-      {/* Dynamic Page Component rendering */}
-      <main className="flex-1">
-        {activeTab === 'home' && (
+      {/* Main View Router - Flow: Home ➔ TravelOptions ➔ HotelBookingPage ➔ FinalItineraryPage ➔ Payment ➔ MyTripsPage */}
+      <main className="flex-1 pt-14">
+        {currentView === 'travel-options' ? (
+          <TravelOptions
+            searchParams={searchParams}
+            onBackToSearch={() => setCurrentView('home')}
+            onContinueToHotels={(option) => {
+              setSelectedTransport(option);
+              setCurrentView('hotel-booking');
+            }}
+          />
+        ) : currentView === 'hotel-booking' ? (
+          <HotelBookingPage
+            transportOption={selectedTransport}
+            onBack={() => setCurrentView('travel-options')}
+            onContinueToFinalItinerary={(hotelData) => {
+              setSelectedHotel(hotelData);
+              setCurrentView('final-itinerary');
+            }}
+          />
+        ) : currentView === 'final-itinerary' ? (
+          <FinalItineraryPage
+            transportOption={selectedTransport}
+            hotelOption={selectedHotel}
+            onBack={() => setCurrentView('hotel-booking')}
+            onProceedToPayment={(tripInfo) => {
+              setPendingPaymentTrip(tripInfo);
+              setPaymentModalOpen(true);
+            }}
+          />
+        ) : currentView === 'calendar-timeline' ? (
+          <TripCalendarTimeline onBack={() => setCurrentView('home')} />
+        ) : currentView === 'shared-itinerary' ? (
+          <SharedItinerary onBack={() => setCurrentView('home')} onOpenAuth={handleOpenAuth} />
+        ) : currentView === 'profile-settings' ? (
+          <ProfileSettings user={user} onBack={() => setCurrentView('home')} onLogoutSuccess={handleLogout} />
+        ) : currentView === 'rentals' ? (
+          <RentalsPage />
+        ) : currentView === 'itinerary' ? (
+          <ItineraryBuilderPage />
+        ) : currentView === 'my-trips' ? (
+          <MyTripsPage
+            user={user}
+            userTrips={userTrips}
+            onOpenShareCard={(trip) => {
+              setSelectedTrip(trip);
+              setShareCardOpen(true);
+            }}
+            onPlanNewTrip={() => setCurrentView('home')}
+            onExploreTrending={() => setCurrentView('home')}
+            onSelectTrip={(trip) => {
+              setSelectedTrip(trip);
+              setCurrentView('trip-detail');
+            }}
+          />
+        ) : currentView === 'trip-detail' ? (
+          <ItineraryDetailPage trip={selectedTrip} onBack={() => setCurrentView('my-trips')} />
+        ) : (
+          /* Default Home Screen */
           <HomePage
             onSearchSubmit={handleSearchSubmit}
             onSelectDestination={(dest) => setSelectedDestination(dest)}
             onOpenAuth={handleOpenAuth}
           />
         )}
-
-        {activeTab === 'rentals' && <RentalsPage />}
-
-        {activeTab === 'itinerary' && <ItineraryBuilderPage />}
-
-        {activeTab === 'my-trips' && isLoggedIn && (
-          <MyTripsPage
-            onPlanNewTrip={() => {
-              setActiveTab('home');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            onExploreTrending={() => {
-              setActiveTab('home');
-              setTimeout(() => {
-                const el = document.getElementById('destinations');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }, 50);
-            }}
-            onSelectTrip={(trip) => {
-              setSelectedTrip(trip);
-              setActiveTab('trip-detail');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-          />
-        )}
-
-        {activeTab === 'trip-detail' && isLoggedIn && (
-          <ItineraryDetailPage
-            trip={selectedTrip}
-            onBack={() => {
-              setActiveTab('my-trips');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-          />
-        )}
       </main>
+
+      {/* Quick Footer Bar */}
+      <div className="bg-surface-container-high py-3 px-4 border-t border-surface-container-highest flex justify-center flex-wrap gap-3 text-xs font-bold text-on-surface">
+        <button onClick={() => handlePageNavigate('calendar-timeline')} className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer">
+          <span className="material-symbols-outlined text-sm">calendar_month</span> Trip Timeline
+        </button>
+        <span className="opacity-30">•</span>
+        <button onClick={() => handlePageNavigate('shared-itinerary')} className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer">
+          <span className="material-symbols-outlined text-sm">groups</span> Shared Itinerary &amp; Group Chat
+        </button>
+        <span className="opacity-30">•</span>
+        <button onClick={() => handlePageNavigate('profile-settings')} className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer">
+          <span className="material-symbols-outlined text-sm">settings</span> Profile &amp; Settings
+        </button>
+        <span className="opacity-30">•</span>
+        <button onClick={() => {
+          if (!user) {
+            setAuthModal({ isOpen: true, mode: 'login' });
+          } else {
+            setShareCardOpen(true);
+          }
+        }} className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer">
+          <span className="material-symbols-outlined text-sm">share</span> Social Share Card
+        </button>
+      </div>
 
       <Footer />
 
@@ -181,19 +291,46 @@ function MainApp() {
       <AuthModal
         isOpen={authModal.isOpen}
         initialMode={authModal.mode}
-        onClose={handleAuthClose}
-        onLoginSuccess={handleLoginSuccess}
+        onClose={() => setAuthModal({ isOpen: false, mode: 'login' })}
+        onAuthSuccess={handleAuthSuccess}
+        onLoginSuccess={handleAuthSuccess}
       />
 
+      {/* Destination Details Modal */}
       <DestinationModal
         destination={selectedDestination}
         onClose={() => setSelectedDestination(null)}
       />
 
-      <PlanTripModal
-        searchData={activeSearch}
-        onClose={() => setActiveSearch(null)}
+      {/* Payment Confirmation Modal */}
+      <PaymentModal
+        isOpen={paymentModalOpen}
+        tripData={pendingPaymentTrip}
+        onClose={() => {
+          setPaymentModalOpen(false);
+          setCurrentView('my-trips');
+        }}
+        onPaymentConfirmed={handlePaymentConfirmed}
       />
+
+      {/* Share Card Modal */}
+      <ShareCardModal
+        isOpen={shareCardOpen}
+        trip={selectedTrip}
+        onClose={() => setShareCardOpen(false)}
+      />
+
+      {/* Blog Editor Modal */}
+      <BlogEditorModal
+        isOpen={blogEditorOpen}
+        onClose={() => setBlogEditorOpen(false)}
+      />
+
+      {/* Fallback Plan Trip Modal */}
+      <PlanTripModal searchData={null} onClose={() => setSearchParams(null)} />
+
+      {/* Floating Bottom Toast Bar Navigation */}
+      <BottomToastBar activeView={currentView} onNavigate={handlePageNavigate} />
     </div>
   );
 }

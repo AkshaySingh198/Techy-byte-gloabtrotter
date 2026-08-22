@@ -57,9 +57,26 @@ async function authenticateToken(req, res, next) {
   }
 }
 
+async function optionalAuthToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      const user = await User.findByPk(decoded.id, {
+        attributes: { exclude: ['password_hash'] }
+      });
+      if (user) req.user = user;
+    } catch (error) {}
+  }
+  next();
+}
+
 module.exports = {
   generateTokens,
   authenticateToken,
+  optionalAuthToken,
   JWT_SECRET,
   JWT_REFRESH_SECRET
 };
