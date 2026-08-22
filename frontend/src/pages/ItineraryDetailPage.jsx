@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { jsPDF } from 'jspdf';
 
 const TRIP_DETAILS_MAP = {
   'amalfi-coast': {
@@ -10,11 +11,13 @@ const TRIP_DETAILS_MAP = {
     dates: 'Oct 10 - Oct 17, 2026',
     cities: '3 Cities',
     totalBudget: '₹2,15,000',
+    totalDays: 8,
+    avgCostPerDay: '₹26,875',
     weather: '24°C',
     monthName: 'October 2026',
     year: 2026,
-    monthIndex: 9, // Oct (0-indexed)
-    startDayOffset: 4, // Thursday
+    monthIndex: 9,
+    startDayOffset: 4,
     daysInMonth: 31,
     tripStartDay: 10,
     tripEndDay: 17,
@@ -23,6 +26,16 @@ const TRIP_DETAILS_MAP = {
       pace: 'Relaxed Pace',
       temp: '24°C Sunny',
     },
+    dailySchedule: [
+      { dayNumber: 1, label: 'Arrival & Suite Check-in', icon: 'flight_land', bgGradient: 'from-blue-600 to-sky-500 border-blue-600', summary: 'Arrival at Rome FCO, private car transfer to Positano cliffside, check-in at Le Sirenuse Suite.' },
+      { dayNumber: 2, label: 'Capri Island Yacht Tour', icon: 'sailing', bgGradient: 'from-teal-600 to-emerald-500 border-teal-600', summary: 'Private speed boat charter around Capri, Blue Grotto excursion, and lunch on deck.' },
+      { dayNumber: 3, label: 'Path of Gods Hike', icon: 'hiking', bgGradient: 'from-emerald-600 to-green-600 border-emerald-600', summary: 'Guided mountain trek from Bomerano to Nocelle with cliffside Mediterranean views.' },
+      { dayNumber: 4, label: 'Beach Club & Spa', icon: 'beach_access', bgGradient: 'from-orange-500 to-amber-500 border-orange-500', summary: 'Arienzo Beach Club sunbathing lounge, cliffside swimming, & afternoon hotel massage.' },
+      { dayNumber: 5, label: 'Ravello Historic Tour', icon: 'castle', bgGradient: 'from-purple-600 to-indigo-600 border-purple-600', summary: 'Exploring Villa Cimbrone Infinity Terrace gardens & evening organ concert in Ravello square.' },
+      { dayNumber: 6, label: 'Michelin Sunset Dinner', icon: 'restaurant', bgGradient: 'from-rose-500 to-pink-600 border-rose-500', summary: 'Limoncello distillery tour followed by candlelit 7-course seafood dinner at La Sponda.' },
+      { dayNumber: 7, label: 'Positano Local Markets', icon: 'shopping_bag', bgGradient: 'from-amber-500 to-yellow-600 border-amber-500', summary: 'Artisanal leather sandal fitting, ceramics shopping, and farewell sunset drinks.' },
+      { dayNumber: 8, label: 'Checkout & Departure', icon: 'flight_takeoff', bgGradient: 'from-indigo-600 to-blue-700 border-indigo-600', summary: 'Morning espresso on Positano balcony, hotel checkout, & transfer to FCO airport.' },
+    ],
     activities: [
       {
         id: 1,
@@ -65,21 +78,43 @@ const TRIP_DETAILS_MAP = {
         image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=400&q=80',
       },
     ],
+    fiveCategoryBreakdown: [
+      { category: 'Transport', amount: '₹35,000', percentage: 16, color: '#FF7F50', bgClass: 'bg-[#FF7F50]', icon: 'directions_car' },
+      { category: 'Hotel', amount: '₹1,10,000', percentage: 51, color: '#0D9488', bgClass: 'bg-[#0D9488]', icon: 'hotel' },
+      { category: 'Rentals', amount: '₹10,000', percentage: 5, color: '#D97706', bgClass: 'bg-[#D97706]', icon: 'two_wheeler' },
+      { category: 'Activities', amount: '₹25,000', percentage: 12, color: '#8B5CF6', bgClass: 'bg-[#8B5CF6]', icon: 'local_activity' },
+      { category: 'Meals', amount: '₹35,000', percentage: 16, color: '#EC4899', bgClass: 'bg-[#EC4899]', icon: 'restaurant' },
+    ],
+    dayWiseCosts: [
+      { day: 'Day 1', cost: '₹65,000', value: 65000 },
+      { day: 'Day 2', cost: '₹22,000', value: 22000 },
+      { day: 'Day 3', cost: '₹18,000', value: 18000 },
+      { day: 'Day 4', cost: '₹25,000', value: 25000 },
+      { day: 'Day 5', cost: '₹20,000', value: 20000 },
+      { day: 'Day 6', cost: '₹28,000', value: 28000 },
+      { day: 'Day 7', cost: '₹22,000', value: 22000 },
+      { day: 'Day 8', cost: '₹15,000', value: 15000 },
+    ],
     itemizedBudget: {
-      flights: [
-        { label: 'Outbound Flight (BOM → FCO)', price: '₹22,500' },
-        { label: 'Return Flight (FCO → BOM)', price: '₹22,500' },
+      transport: [
+        { label: 'Outbound & Return Flight (BOM ⇄ FCO)', price: '₹30,000' },
+        { label: 'Rome Airport Private Taxi Transfer', price: '₹5,000' },
       ],
-      hotels: [
-        { label: 'Le Sirenuse Ocean Suite (7 Nights × ₹17,142/night)', price: '₹1,20,000' },
+      hotel: [
+        { label: 'Le Sirenuse Cliffside Suite (7 Nights)', price: '₹1,10,000' },
       ],
-      dining: [
-        { label: 'La Sponda Michelin Dinner (2 Pax)', price: '₹15,000' },
-        { label: 'Positano Beach Club Lunches', price: '₹10,000' },
+      rentals: [
+        { label: 'Vintage Vespa Scooter Rental (3 Days)', price: '₹6,000' },
+        { label: 'Private Speedboat Rental', price: '₹4,000' },
       ],
       activities: [
-        { label: 'Private Boat Charter to Capri Island', price: '₹20,000' },
-        { label: 'Path of the Gods Guided Hike & Entry', price: '₹5,000' },
+        { label: 'Capri Island Guided Boat Tour', price: '₹18,000' },
+        { label: 'Path of the Gods Trek & Entry Ticket', price: '₹7,000' },
+      ],
+      meals: [
+        { label: 'La Sponda Michelin Sunset Dinner (2 Pax)', price: '₹15,000' },
+        { label: 'Positano Beach Club Lunches & Cocktails', price: '₹12,000' },
+        { label: 'Local Trattoria Dinners & Gelato', price: '₹8,000' },
       ],
     },
     budgetBreakdown: [
@@ -98,11 +133,13 @@ const TRIP_DETAILS_MAP = {
     dates: 'Jan 10 - Jan 17, 2025',
     cities: '2 Islands',
     totalBudget: '₹1,80,000',
+    totalDays: 7,
+    avgCostPerDay: '₹25,714',
     weather: '29°C',
     monthName: 'January 2025',
     year: 2025,
     monthIndex: 0,
-    startDayOffset: 3, // Wednesday
+    startDayOffset: 3,
     daysInMonth: 31,
     tripStartDay: 10,
     tripEndDay: 17,
@@ -111,6 +148,16 @@ const TRIP_DETAILS_MAP = {
       pace: 'Leisure Pace',
       temp: '29°C Clear Skies',
     },
+    dailySchedule: [
+      { dayNumber: 1, label: 'Seaplane & Water Villa', icon: 'flight_land', bgGradient: 'from-blue-600 to-sky-500 border-blue-600', summary: 'Arrival in Male, scenic seaplane transfer to Soneva Fushi, & check-in to Sunset Water Villa.' },
+      { dayNumber: 2, label: 'Reef Snorkeling Safari', icon: 'scuba_diving', bgGradient: 'from-teal-600 to-cyan-500 border-teal-600', summary: 'Guided house reef snorkeling with sea turtles, manta rays, and tropical marine life.' },
+      { dayNumber: 3, label: 'Subsix Underwater Dining', icon: 'restaurant', bgGradient: 'from-rose-500 to-pink-600 border-rose-500', summary: 'Lagoon floating breakfast followed by gourmet deep sea dinner at Subsix.' },
+      { dayNumber: 4, label: 'Sunset Dolphin Cruise', icon: 'sailing', bgGradient: 'from-cyan-600 to-teal-600 border-cyan-600', summary: 'Traditional Maldivian dhoni boat trip searching for wild spinner dolphins at dusk.' },
+      { dayNumber: 5, label: 'Overwater Spa & Massage', icon: 'spa', bgGradient: 'from-purple-600 to-indigo-600 border-purple-600', summary: 'Full-body Ayurvedic massage, yoga session on private deck, & sunset relaxation.' },
+      { dayNumber: 6, label: 'Water Sports & Kayak', icon: 'surfing', bgGradient: 'from-orange-500 to-amber-500 border-orange-500', summary: 'Clear-bottom kayak tour around sandbanks and paddleboarding in turquoise lagoons.' },
+      { dayNumber: 7, label: 'Sandbank Picnic & Stargazing', icon: 'kayaking', bgGradient: 'from-amber-500 to-yellow-600 border-amber-500', summary: 'Private deserted sandbank seafood lunch and stargazing at resort observatory.' },
+      { dayNumber: 8, label: 'Departure Seaplane', icon: 'flight_takeoff', bgGradient: 'from-indigo-600 to-blue-700 border-indigo-600', summary: 'Seaplane transfer back to Male international airport for departure flight.' },
+    ],
     activities: [
       {
         id: 1,
@@ -153,19 +200,38 @@ const TRIP_DETAILS_MAP = {
         image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=400&q=80',
       },
     ],
+    fiveCategoryBreakdown: [
+      { category: 'Transport', amount: '₹28,000', percentage: 15, color: '#FF7F50', bgClass: 'bg-[#FF7F50]', icon: 'directions_car' },
+      { category: 'Hotel', amount: '₹1,10,000', percentage: 61, color: '#0D9488', bgClass: 'bg-[#0D9488]', icon: 'hotel' },
+      { category: 'Rentals', amount: '₹7,000', percentage: 4, color: '#D97706', bgClass: 'bg-[#D97706]', icon: 'two_wheeler' },
+      { category: 'Activities', amount: '₹15,000', percentage: 8, color: '#8B5CF6', bgClass: 'bg-[#8B5CF6]', icon: 'local_activity' },
+      { category: 'Meals', amount: '₹20,000', percentage: 12, color: '#EC4899', bgClass: 'bg-[#EC4899]', icon: 'restaurant' },
+    ],
+    dayWiseCosts: [
+      { day: 'Day 1', cost: '₹48,000', value: 48000 },
+      { day: 'Day 2', cost: '₹25,000', value: 25000 },
+      { day: 'Day 3', cost: '₹22,000', value: 22000 },
+      { day: 'Day 4', cost: '₹28,000', value: 28000 },
+      { day: 'Day 5', cost: '₹20,000', value: 20000 },
+      { day: 'Day 6', cost: '₹24,000', value: 24000 },
+      { day: 'Day 7', cost: '₹13,000', value: 13000 },
+    ],
     itemizedBudget: {
-      flights: [
-        { label: 'Roundtrip Flight + Seaplane', price: '₹28,000' },
+      transport: [
+        { label: 'Roundtrip Flight + Island Seaplane Transfer', price: '₹28,000' },
       ],
-      hotels: [
-        { label: 'Water Villa (7 Nights × ₹15,714/night)', price: '₹1,10,000' },
+      hotel: [
+        { label: 'Soneva Sunset Water Villa (7 Nights)', price: '₹1,10,000' },
       ],
-      dining: [
-        { label: 'Subsix Underwater Dinner', price: '₹18,000' },
-        { label: 'Resort Beach Buffet', price: '₹12,000' },
+      rentals: [
+        { label: 'Snorkeling & Jet Ski Equipment Rental', price: '₹7,000' },
       ],
       activities: [
-        { label: 'Coral Reef Snorkeling & Scuba Diving', price: '₹12,000' },
+        { label: 'Coral Reef Scuba Diving & Sunset Cruise', price: '₹15,000' },
+      ],
+      meals: [
+        { label: 'Subsix Underwater Dinner & Champagne', price: '₹18,000' },
+        { label: 'Beachfront Buffet Dinners', price: '₹2,000' },
       ],
     },
     budgetBreakdown: [
@@ -184,11 +250,13 @@ const TRIP_DETAILS_MAP = {
     dates: 'Nov 12 - Nov 24, 2026',
     cities: '4 Cities',
     totalBudget: '₹2,45,000',
+    totalDays: 12,
+    avgCostPerDay: '₹20,416',
     weather: '18°C',
     monthName: 'November 2026',
     year: 2026,
     monthIndex: 10,
-    startDayOffset: 0, // Sunday
+    startDayOffset: 0,
     daysInMonth: 30,
     tripStartDay: 12,
     tripEndDay: 24,
@@ -197,6 +265,20 @@ const TRIP_DETAILS_MAP = {
       pace: 'Active Altitude Pace',
       temp: '18°C Sunny Altitude',
     },
+    dailySchedule: [
+      { dayNumber: 1, label: 'Cusco Arrival & Rest', icon: 'flight_land', bgGradient: 'from-blue-600 to-sky-500 border-blue-600', summary: 'Arrival at Cusco (3,400m), oxygen suite check-in, altitude acclimatization, & coca tea.' },
+      { dayNumber: 2, label: 'Cusco Walking Tour', icon: 'account_balance', bgGradient: 'from-indigo-600 to-purple-600 border-indigo-600', summary: 'Guided walking tour of Qorikancha, Sacsayhuamán fortress ruins, & San Pedro market.' },
+      { dayNumber: 3, label: 'Sacred Valley Trek', icon: 'landscape', bgGradient: 'from-emerald-600 to-green-600 border-emerald-600', summary: 'Exploring Maras Salt Mines, Moray agricultural terraces, & Pisac artisan markets.' },
+      { dayNumber: 4, label: 'Vistadome Train', icon: 'directions_railway', bgGradient: 'from-cyan-600 to-blue-600 border-cyan-600', summary: 'Panoramic glass train ride through Urubamba river valley to Machu Picchu Pueblo.' },
+      { dayNumber: 5, label: 'Machu Picchu Sunrise', icon: 'temple_hindu', bgGradient: 'from-amber-500 to-orange-600 border-amber-500', summary: 'Early bus to Machu Picchu citadel, guided sanctuary tour, & Huayna Picchu climb.' },
+      { dayNumber: 6, label: 'Inca Trail Trek', icon: 'hiking', bgGradient: 'from-green-600 to-emerald-600 border-green-600', summary: 'Scenic trekking along historic stone Inca pathways and orchid forest valley.' },
+      { dayNumber: 7, label: 'Ollantaytambo Fort', icon: 'nature', bgGradient: 'from-purple-600 to-indigo-600 border-purple-600', summary: 'Visiting giant stone monolith terraces and living Inca village of Ollantaytambo.' },
+      { dayNumber: 8, label: 'Andean Cooking', icon: 'restaurant', bgGradient: 'from-rose-500 to-pink-600 border-rose-500', summary: 'Farm-to-table Peruvian gastronomy workshop and pachamanca underground roast.' },
+      { dayNumber: 9, label: 'Rainbow Mountain', icon: 'terrain', bgGradient: 'from-red-500 to-orange-600 border-red-500', summary: 'High-altitude hike to Vinicunca (5,200m) to witness colorful mineral mountain peaks.' },
+      { dayNumber: 10, label: 'Humantay Lake', icon: 'water', bgGradient: 'from-teal-600 to-cyan-600 border-teal-600', summary: 'Glacial turquoise alpine lake hike situated beneath snow-capped Andes mountains.' },
+      { dayNumber: 11, label: 'San Blas Market', icon: 'shopping_bag', bgGradient: 'from-yellow-500 to-amber-600 border-yellow-500', summary: 'Alpaca wool shopping, coffee tasting, and farewell Andean live music night.' },
+      { dayNumber: 12, label: 'Lima City & Flight', icon: 'flight_takeoff', bgGradient: 'from-blue-600 to-indigo-700 border-blue-600', summary: 'Flight back to Lima, seaside Miraflores boardwalk walk, & international return flight.' },
+    ],
     activities: [
       {
         id: 1,
@@ -239,19 +321,45 @@ const TRIP_DETAILS_MAP = {
         image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=400&q=80',
       },
     ],
+    fiveCategoryBreakdown: [
+      { category: 'Transport', amount: '₹65,000', percentage: 26, color: '#FF7F50', bgClass: 'bg-[#FF7F50]', icon: 'directions_car' },
+      { category: 'Hotel', amount: '₹95,000', percentage: 39, color: '#0D9488', bgClass: 'bg-[#0D9488]', icon: 'hotel' },
+      { category: 'Rentals', amount: '₹10,000', percentage: 4, color: '#D97706', bgClass: 'bg-[#D97706]', icon: 'two_wheeler' },
+      { category: 'Activities', amount: '₹45,000', percentage: 18, color: '#8B5CF6', bgClass: 'bg-[#8B5CF6]', icon: 'local_activity' },
+      { category: 'Meals', amount: '₹30,000', percentage: 13, color: '#EC4899', bgClass: 'bg-[#EC4899]', icon: 'restaurant' },
+    ],
+    dayWiseCosts: [
+      { day: 'Day 1', cost: '₹75,000', value: 75000 },
+      { day: 'Day 2', cost: '₹18,000', value: 18000 },
+      { day: 'Day 3', cost: '₹15,000', value: 15000 },
+      { day: 'Day 4', cost: '₹22,000', value: 22000 },
+      { day: 'Day 5', cost: '₹30,000', value: 30000 },
+      { day: 'Day 6', cost: '₹16,000', value: 16000 },
+      { day: 'Day 7', cost: '₹20,000', value: 20000 },
+      { day: 'Day 8', cost: '₹14,000', value: 14000 },
+      { day: 'Day 9', cost: '₹12,000', value: 12000 },
+      { day: 'Day 10', cost: '₹10,000', value: 10000 },
+      { day: 'Day 11', cost: '₹8,000', value: 8000 },
+      { day: 'Day 12', cost: '₹5,000', value: 5000 },
+    ],
     itemizedBudget: {
-      flights: [
-        { label: 'International Flights (DEL → CUZ)', price: '₹65,000' },
+      transport: [
+        { label: 'DEL → CUZ International Flights', price: '₹50,000' },
+        { label: 'Machu Picchu Vistadome Train Passes', price: '₹15,000' },
       ],
-      hotels: [
-        { label: 'Belmond Heritage Suite (12 Nights × ₹7,916/night)', price: '₹95,000' },
+      hotel: [
+        { label: 'Belmond Monasterio Suite (12 Nights)', price: '₹95,000' },
       ],
-      dining: [
-        { label: 'Cicciolina & Traditional Dining', price: '₹25,000' },
+      rentals: [
+        { label: 'Inca Trail Trekking Gear & Backpack Rental', price: '₹10,000' },
       ],
       activities: [
-        { label: 'Machu Picchu Vistadome Train & Entry', price: '₹40,000' },
+        { label: 'Machu Picchu Sanctuary Entry Passes', price: '₹25,000' },
         { label: 'Sacred Valley Guided Day Tour', price: '₹20,000' },
+      ],
+      meals: [
+        { label: 'Cicciolina Fine Dining & Teas', price: '₹18,000' },
+        { label: 'Local Peruvian Dinners & Markets', price: '₹12,000' },
       ],
     },
     budgetBreakdown: [
@@ -293,6 +401,187 @@ export default function ItineraryDetailPage({ trip, onBack }) {
       setTimeout(() => setCopyToast(false), 2500);
     }
   };
+
+  const downloadBudgetReceiptPDF = () => {
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+    });
+
+    // Header Title
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.setTextColor(234, 88, 12);
+    doc.text('GlobeTrotter', 14, 20);
+
+    doc.setFontSize(16);
+    doc.setTextColor(30, 41, 59);
+    doc.text(data.title, 14, 29);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`${data.subtitle} • ${data.dates}`, 14, 36);
+    doc.text(`Generated Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, 14, 42);
+
+    // Header Line
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(234, 88, 12);
+    doc.line(14, 46, 196, 46);
+
+    // Summary Box
+    doc.setFillColor(255, 247, 237);
+    doc.roundedRect(14, 50, 182, 26, 3, 3, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text('TOTAL ESTIMATED COST', 20, 59);
+
+    doc.setFontSize(18);
+    doc.setTextColor(234, 88, 12);
+    doc.text(data.totalBudget, 20, 69);
+
+    doc.setFontSize(10);
+    doc.setTextColor(13, 148, 136);
+    doc.text(`Average: ${data.avgCostPerDay} / day`, 125, 61);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Calculated over ${data.totalDays} trip days`, 125, 68);
+
+    // 5 Category Breakdown
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42);
+    doc.text('5-CATEGORY EXPENSE BREAKDOWN', 14, 87);
+
+    // Table Header
+    doc.setFillColor(241, 245, 249);
+    doc.rect(14, 91, 182, 8, 'F');
+    doc.setFontSize(9);
+    doc.setTextColor(51, 65, 85);
+    doc.text('Category', 18, 96.5);
+    doc.text('Percentage', 105, 96.5);
+    doc.text('Estimated Amount', 155, 96.5);
+
+    let y = 105;
+    data.fiveCategoryBreakdown.forEach((cat) => {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      doc.setTextColor(30, 41, 59);
+      doc.text(cat.category, 18, y);
+      doc.text(`${cat.percentage}%`, 105, y);
+      doc.setFont('helvetica', 'bold');
+      doc.text(cat.amount, 155, y);
+
+      doc.setDrawColor(241, 245, 249);
+      doc.line(14, y + 2.5, 196, y + 2.5);
+      y += 8;
+    });
+
+    // Itemized Line Items
+    y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42);
+    doc.text('ITEMIZED LINE ITEMS', 14, y);
+    y += 6;
+
+    const sections = [
+      { title: 'Transport', items: data.itemizedBudget.transport },
+      { title: 'Hotel', items: data.itemizedBudget.hotel },
+      { title: 'Rentals', items: data.itemizedBudget.rentals },
+      { title: 'Activities', items: data.itemizedBudget.activities },
+      { title: 'Meals', items: data.itemizedBudget.meals },
+    ];
+
+    doc.setFillColor(241, 245, 249);
+    doc.rect(14, y, 182, 8, 'F');
+    doc.setFontSize(9);
+    doc.setTextColor(51, 65, 85);
+    doc.text('Item Description', 18, y + 5.5);
+    doc.text('Cost (INR)', 155, y + 5.5);
+    y += 13;
+
+    sections.forEach((sec) => {
+      sec.items.forEach((item) => {
+        if (y > 270) {
+          doc.addPage();
+          y = 20;
+        }
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(71, 85, 105);
+        const itemLabel = `[${sec.title}] ${item.label}`;
+        doc.text(itemLabel.length > 55 ? itemLabel.substring(0, 52) + '...' : itemLabel, 18, y);
+        doc.setFont('helvetica', 'bold');
+        doc.text(item.price, 155, y);
+
+        doc.setDrawColor(241, 245, 249);
+        doc.line(14, y + 2.5, 196, y + 2.5);
+        y += 7.5;
+      });
+    });
+
+    // Day Wise Trend
+    if (y > 240) {
+      doc.addPage();
+      y = 20;
+    } else {
+      y += 6;
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42);
+    doc.text('DAY-WISE EXPENSE TREND', 14, y);
+    y += 6;
+
+    doc.setFillColor(241, 245, 249);
+    doc.rect(14, y, 182, 8, 'F');
+    doc.setFontSize(9);
+    doc.setTextColor(51, 65, 85);
+    doc.text('Day', 18, y + 5.5);
+    doc.text('Estimated Expense', 155, y + 5.5);
+    y += 13;
+
+    data.dayWiseCosts.forEach((d) => {
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(71, 85, 105);
+      doc.text(d.day, 18, y);
+      doc.setFont('helvetica', 'bold');
+      doc.text(d.cost, 155, y);
+
+      doc.setDrawColor(241, 245, 249);
+      doc.line(14, y + 2.5, 196, y + 2.5);
+      y += 7.5;
+    });
+
+    // Footer
+    y += 8;
+    if (y > 275) {
+      doc.addPage();
+      y = 270;
+    }
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text('Thank you for planning your travel itinerary with GlobeTrotter! • www.globetrotter.app', 14, y);
+
+    // Trigger REAL binary PDF file download
+    doc.save(`${data.title.replace(/[^a-zA-Z0-9]/g, '_')}_Budget_Receipt.pdf`);
+  };
+
+  // Max value for bar chart calculation
+  const maxDayCost = Math.max(...data.dayWiseCosts.map((d) => d.value));
 
   return (
     <div className="min-h-screen bg-background text-on-surface pt-14 pb-16 relative">
@@ -341,9 +630,9 @@ export default function ItineraryDetailPage({ trip, onBack }) {
               <span className="material-symbols-outlined text-xl">share</span>
             </button>
             <button
-              onClick={() => alert(`📥 Downloading PDF Itinerary for ${data.title}…`)}
+              onClick={downloadBudgetReceiptPDF}
               className="bg-white/25 hover:bg-white/40 text-white backdrop-blur-md p-2.5 rounded-full transition-all flex items-center justify-center cursor-pointer shadow-md"
-              title="Download Itinerary"
+              title="Download Itinerary PDF"
             >
               <span className="material-symbols-outlined text-xl">download</span>
             </button>
@@ -515,7 +804,7 @@ export default function ItineraryDetailPage({ trip, onBack }) {
               </div>
             </>
           ) : (
-            /* 📅 Full Month Calendar View (Request 1) */
+            /* 📅 Full Month Calendar View */
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-surface-container-highest space-y-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-surface-container-highest pb-4">
                 <div>
@@ -560,6 +849,8 @@ export default function ItineraryDetailPage({ trip, onBack }) {
                       const dayNum = idx + 1;
                       const isTripDay = dayNum >= data.tripStartDay && dayNum <= data.tripEndDay;
                       const isSelected = selectedCalendarDay === dayNum;
+                      const dayIdx = dayNum - data.tripStartDay;
+                      const daySched = isTripDay && data.dailySchedule ? data.dailySchedule[dayIdx] : null;
 
                       return (
                         <div
@@ -567,7 +858,7 @@ export default function ItineraryDetailPage({ trip, onBack }) {
                           onClick={() => isTripDay && setSelectedCalendarDay(dayNum)}
                           className={`h-20 p-2 rounded-2xl border transition-all flex flex-col justify-between relative text-left ${
                             isTripDay
-                              ? 'bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-md border-orange-600 hover:scale-[1.03] cursor-pointer'
+                              ? `bg-gradient-to-br ${daySched?.bgGradient || 'from-orange-500 to-amber-500 border-orange-600'} text-white shadow-md hover:scale-[1.04] cursor-pointer`
                               : 'bg-white text-on-surface border-surface-container-highest hover:border-surface-container-high'
                           } ${isSelected ? 'ring-4 ring-primary-container/40' : ''}`}
                         >
@@ -576,13 +867,15 @@ export default function ItineraryDetailPage({ trip, onBack }) {
                               {dayNum}
                             </span>
                             {isTripDay && (
-                              <span className="material-symbols-outlined text-xs text-white/90">flight_takeoff</span>
+                              <span className="material-symbols-outlined text-xs text-white/95" title={daySched?.label || `Day ${dayIdx + 1}`}>
+                                {daySched?.icon || 'event'}
+                              </span>
                             )}
                           </div>
 
                           {isTripDay && (
-                            <div className="text-[10px] font-bold bg-black/20 text-white px-1.5 py-0.5 rounded truncate">
-                              Day {dayNum - data.tripStartDay + 1}
+                            <div className="text-[9px] font-extrabold bg-black/25 text-white px-1.5 py-0.5 rounded truncate leading-tight mt-1" title={daySched?.label}>
+                              {daySched ? daySched.label : `Day ${dayIdx + 1}`}
                             </div>
                           )}
                         </div>
@@ -593,27 +886,33 @@ export default function ItineraryDetailPage({ trip, onBack }) {
               </div>
 
               {/* Selected Day Details Box */}
-              {selectedCalendarDay && (
-                <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-orange-200 rounded-2xl p-4 flex items-center justify-between text-xs animate-in fade-in duration-200">
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary-container text-2xl">event_available</span>
-                    <div>
-                      <h4 className="font-bold text-on-surface">
-                        Day {selectedCalendarDay - data.tripStartDay + 1} ({data.monthName.split(' ')[0]} {selectedCalendarDay})
-                      </h4>
-                      <p className="text-on-surface-variant font-medium">
-                        Activities scheduled: Sightseeing, dining & hotel stay.
-                      </p>
+              {selectedCalendarDay && (() => {
+                const dayIdx = selectedCalendarDay - data.tripStartDay;
+                const sched = data.dailySchedule?.[dayIdx];
+                return (
+                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-orange-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs animate-in fade-in duration-200">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${sched?.bgGradient || 'from-orange-500 to-amber-500'} text-white flex items-center justify-center shrink-0 shadow-md`}>
+                        <span className="material-symbols-outlined text-xl">{sched?.icon || 'event'}</span>
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-on-surface text-sm">
+                          Day {dayIdx + 1}: {sched?.label || 'Scheduled Trip Activity'} ({data.monthName.split(' ')[0]} {selectedCalendarDay})
+                        </h4>
+                        <p className="text-on-surface-variant font-medium mt-0.5">
+                          {sched?.summary || 'Sightseeing, dining & hotel stay scheduled.'}
+                        </p>
+                      </div>
                     </div>
+                    <button
+                      onClick={() => setViewTab('timeline')}
+                      className="bg-primary-container text-white px-4 py-2 rounded-full font-bold hover:bg-primary transition-colors cursor-pointer shrink-0 shadow-xs"
+                    >
+                      View in Timeline
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setViewTab('timeline')}
-                    className="bg-primary-container text-white px-4 py-1.5 rounded-full font-bold hover:bg-primary transition-colors cursor-pointer"
-                  >
-                    View in Timeline
-                  </button>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
         </div>
@@ -650,7 +949,7 @@ export default function ItineraryDetailPage({ trip, onBack }) {
               ))}
             </div>
 
-            {/* View Full Budget Button (Request 2) */}
+            {/* View Full Budget Button */}
             <button
               onClick={() => setShowFullBudgetModal(true)}
               className="w-full py-2.5 rounded-xl border-2 border-teal-700 text-teal-700 font-bold text-xs hover:bg-teal-700 hover:text-white transition-colors cursor-pointer flex items-center justify-center gap-1.5"
@@ -682,7 +981,7 @@ export default function ItineraryDetailPage({ trip, onBack }) {
             </div>
           </div>
 
-          {/* Quick Actions Card (Request 3 - logic based on trip status) */}
+          {/* Quick Actions Card */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-surface-container-highest space-y-3">
             <h3 className="font-display text-sm font-bold text-on-surface flex items-center justify-between">
               <span>Quick Actions</span>
@@ -729,15 +1028,6 @@ export default function ItineraryDetailPage({ trip, onBack }) {
                 </button>
               )}
 
-              {/* Export Calendar */}
-              <button
-                onClick={() => alert(`📅 Exporting ${data.title} schedule to Google Calendar…`)}
-                className="flex items-center gap-2.5 w-full p-2.5 rounded-xl hover:bg-surface-container transition-colors text-left text-xs font-semibold text-on-surface cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-on-surface-variant text-base">event</span>
-                <span>Export Calendar</span>
-              </button>
-
               {/* Download Memories PDF (for Past) */}
               {tripStatus === 'Past' && (
                 <button
@@ -753,17 +1043,19 @@ export default function ItineraryDetailPage({ trip, onBack }) {
         </div>
       </div>
 
-      {/* 🧾 Itemized Full Budget Modal (Request 2) */}
+      {/* 🧾 ITEMIZED FULL BUDGET SUB-PAGE MODAL */}
       {showFullBudgetModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 relative shadow-2xl border border-surface-container-highest flex flex-col max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 relative shadow-2xl border border-surface-container-highest flex flex-col max-h-[92vh] overflow-y-auto">
             {/* Header */}
-            <div className="flex justify-between items-center pb-3 border-b border-surface-container-highest">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary-container text-2xl">account_balance_wallet</span>
+            <div className="flex justify-between items-start pb-4 border-b border-surface-container-highest">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-full bg-primary-container/10 text-primary-container flex items-center justify-center">
+                  <span className="material-symbols-outlined text-2xl">account_balance_wallet</span>
+                </div>
                 <div>
-                  <h3 className="font-display font-extrabold text-lg text-on-surface">Itemized Budget Breakdown</h3>
-                  <p className="text-xs text-on-surface-variant font-medium">{data.title} · Total: <span className="font-bold text-primary">{data.totalBudget}</span></p>
+                  <h3 className="font-display font-extrabold text-xl text-on-surface">Budget & Expense Analytics</h3>
+                  <p className="text-xs text-on-surface-variant font-medium">{data.title} · {data.dates}</p>
                 </div>
               </div>
               <button
@@ -774,85 +1066,201 @@ export default function ItineraryDetailPage({ trip, onBack }) {
               </button>
             </div>
 
-            {/* Content Sections */}
-            <div className="py-4 space-y-5 text-xs">
-              {/* Flights */}
-              <div className="bg-surface-container/50 rounded-2xl p-4 border border-surface-container-highest">
-                <h4 className="font-bold text-on-surface flex items-center gap-1.5 text-sm mb-2">
-                  <span className="material-symbols-outlined text-primary-container text-base">flight</span>
-                  Flights Breakdown
-                </h4>
-                <div className="space-y-1.5">
-                  {data.itemizedBudget.flights.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-on-surface-variant font-medium">
-                      <span>{item.label}</span>
-                      <span className="font-bold text-on-surface">{item.price}</span>
-                    </div>
-                  ))}
+            {/* Content Body */}
+            <div className="py-5 space-y-6 text-xs">
+
+              {/* 1. PROMINENT TOTAL ESTIMATED COST & AVG/DAY BANNER */}
+              <div className="bg-gradient-to-r from-primary-container/10 via-amber-500/10 to-teal-500/10 border border-primary-container/30 rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-on-surface-variant">
+                    Total Estimated Cost
+                  </span>
+                  <div className="font-display text-3xl sm:text-4xl font-black text-primary-container mt-0.5">
+                    {data.totalBudget}
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:items-end gap-1">
+                  <span className="bg-white/80 border border-surface-container-highest px-3 py-1 rounded-full font-bold text-xs text-teal-800 shadow-xs flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">schedule</span>
+                    Average: <span className="text-primary font-extrabold">{data.avgCostPerDay}</span> / day
+                  </span>
+                  <span className="text-[11px] font-medium text-on-surface-variant">
+                    Calculated over {data.totalDays} trip days
+                  </span>
                 </div>
               </div>
 
-              {/* Hotels */}
-              <div className="bg-surface-container/50 rounded-2xl p-4 border border-surface-container-highest">
-                <h4 className="font-bold text-on-surface flex items-center gap-1.5 text-sm mb-2">
-                  <span className="material-symbols-outlined text-teal-600 text-base">hotel</span>
-                  Hotels & Accommodations Breakdown
+              {/* 2. 5-CATEGORY PIE / DONUT CHART BREAKDOWN */}
+              <div className="bg-surface-container/40 rounded-2xl p-5 border border-surface-container-highest space-y-4">
+                <h4 className="font-display font-bold text-sm text-on-surface flex items-center justify-between">
+                  <span>Category Expense Breakdown</span>
+                  <span className="text-xs font-normal text-on-surface-variant">5 Main Categories</span>
                 </h4>
-                <div className="space-y-1.5">
-                  {data.itemizedBudget.hotels.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-on-surface-variant font-medium">
-                      <span>{item.label}</span>
-                      <span className="font-bold text-on-surface">{item.price}</span>
+
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                  {/* Conic-gradient Pie Chart */}
+                  <div className="relative w-36 h-36 rounded-full shrink-0 flex items-center justify-center shadow-md"
+                    style={{
+                      background: `conic-gradient(
+                        ${data.fiveCategoryBreakdown[0].color} 0% ${data.fiveCategoryBreakdown[0].percentage}%,
+                        ${data.fiveCategoryBreakdown[1].color} ${data.fiveCategoryBreakdown[0].percentage}% ${data.fiveCategoryBreakdown[0].percentage + data.fiveCategoryBreakdown[1].percentage}%,
+                        ${data.fiveCategoryBreakdown[2].color} ${data.fiveCategoryBreakdown[0].percentage + data.fiveCategoryBreakdown[1].percentage}% ${data.fiveCategoryBreakdown[0].percentage + data.fiveCategoryBreakdown[1].percentage + data.fiveCategoryBreakdown[2].percentage}%,
+                        ${data.fiveCategoryBreakdown[3].color} ${data.fiveCategoryBreakdown[0].percentage + data.fiveCategoryBreakdown[1].percentage + data.fiveCategoryBreakdown[2].percentage}% ${data.fiveCategoryBreakdown[0].percentage + data.fiveCategoryBreakdown[1].percentage + data.fiveCategoryBreakdown[2].percentage + data.fiveCategoryBreakdown[3].percentage}%,
+                        ${data.fiveCategoryBreakdown[4].color} ${data.fiveCategoryBreakdown[0].percentage + data.fiveCategoryBreakdown[1].percentage + data.fiveCategoryBreakdown[2].percentage + data.fiveCategoryBreakdown[3].percentage}% 100%
+                      )`
+                    }}
+                  >
+                    <div className="w-24 h-24 bg-white rounded-full flex flex-col items-center justify-center shadow-inner">
+                      <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Share</span>
+                      <span className="font-display text-xs font-extrabold text-on-surface">100%</span>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Category Legend Grid */}
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full">
+                    {data.fiveCategoryBreakdown.map((cat) => (
+                      <div key={cat.category} className="flex items-center justify-between p-2 rounded-xl bg-white border border-surface-container-highest shadow-2xs">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-3 h-3 rounded-full ${cat.bgClass}`} />
+                          <span className="material-symbols-outlined text-sm text-on-surface-variant">{cat.icon}</span>
+                          <span className="font-semibold text-on-surface">{cat.category}</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-on-surface">{cat.amount}</div>
+                          <div className="text-[10px] text-on-surface-variant font-medium">{cat.percentage}%</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              {/* Dining */}
-              <div className="bg-surface-container/50 rounded-2xl p-4 border border-surface-container-highest">
-                <h4 className="font-bold text-on-surface flex items-center gap-1.5 text-sm mb-2">
-                  <span className="material-symbols-outlined text-amber-600 text-base">restaurant</span>
-                  Dining & Culinary Expenses
+              {/* 3. DAY-WISE COST BAR CHART */}
+              <div className="bg-surface-container/40 rounded-2xl p-5 border border-surface-container-highest space-y-3">
+                <h4 className="font-display font-bold text-sm text-on-surface flex items-center justify-between">
+                  <span>Day-Wise Cost Bar Chart</span>
+                  <span className="text-xs font-normal text-on-surface-variant">Daily Expense Variance</span>
                 </h4>
-                <div className="space-y-1.5">
-                  {data.itemizedBudget.dining.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-on-surface-variant font-medium">
-                      <span>{item.label}</span>
-                      <span className="font-bold text-on-surface">{item.price}</span>
-                    </div>
-                  ))}
+
+                <div className="pt-4 pb-2">
+                  <div className="flex items-end justify-between gap-2 h-36 px-2 border-b border-surface-container-highest">
+                    {data.dayWiseCosts.map((d, idx) => {
+                      const barPercent = Math.max(15, Math.round((d.value / maxDayCost) * 100));
+                      return (
+                        <div key={idx} className="flex-1 flex flex-col items-center gap-1 group h-full justify-end">
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-inverse-surface text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap mb-1">
+                            {d.cost}
+                          </div>
+                          <div
+                            className="w-full max-w-[32px] rounded-t-lg bg-gradient-to-t from-primary-container to-amber-400 group-hover:from-primary group-hover:to-orange-500 transition-all duration-300 shadow-xs"
+                            style={{ height: `${barPercent}%` }}
+                          />
+                          <span className="text-[10px] font-bold text-on-surface-variant mt-1">
+                            {d.day.replace('Day ', 'D')}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
-              {/* Activities */}
-              <div className="bg-surface-container/50 rounded-2xl p-4 border border-surface-container-highest">
-                <h4 className="font-bold text-on-surface flex items-center gap-1.5 text-sm mb-2">
-                  <span className="material-symbols-outlined text-purple-600 text-base">local_activity</span>
-                  Activities & Excursions Breakdown
-                </h4>
-                <div className="space-y-1.5">
-                  {data.itemizedBudget.activities.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-on-surface-variant font-medium">
-                      <span>{item.label}</span>
-                      <span className="font-bold text-on-surface">{item.price}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {/* 4. ITEMIZED DETAILED LIST ACCORDION */}
+              <div className="space-y-3 pt-2">
+                <h4 className="font-display font-bold text-sm text-on-surface">Itemized Line Items</h4>
 
-              {/* Grand Total Footer */}
-              <div className="bg-primary-container/10 border border-primary-container/30 rounded-2xl p-4 flex justify-between items-center text-sm font-extrabold">
-                <span className="text-on-surface">Grand Total Budget</span>
-                <span className="text-primary-container text-base">{data.totalBudget}</span>
+                <div className="grid grid-cols-1 gap-3">
+                  {/* Transport */}
+                  <div className="bg-white rounded-xl p-3.5 border border-surface-container-highest">
+                    <h5 className="font-bold text-on-surface flex items-center gap-1.5 text-xs mb-2">
+                      <span className="material-symbols-outlined text-orange-500 text-sm">directions_car</span>
+                      Transport Expenses
+                    </h5>
+                    <div className="space-y-1 text-xs">
+                      {data.itemizedBudget.transport.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-on-surface-variant font-medium">
+                          <span>{item.label}</span>
+                          <span className="font-bold text-on-surface">{item.price}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Hotel */}
+                  <div className="bg-white rounded-xl p-3.5 border border-surface-container-highest">
+                    <h5 className="font-bold text-on-surface flex items-center gap-1.5 text-xs mb-2">
+                      <span className="material-symbols-outlined text-teal-600 text-sm">hotel</span>
+                      Hotel & Accommodations
+                    </h5>
+                    <div className="space-y-1 text-xs">
+                      {data.itemizedBudget.hotel.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-on-surface-variant font-medium">
+                          <span>{item.label}</span>
+                          <span className="font-bold text-on-surface">{item.price}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Rentals */}
+                  <div className="bg-white rounded-xl p-3.5 border border-surface-container-highest">
+                    <h5 className="font-bold text-on-surface flex items-center gap-1.5 text-xs mb-2">
+                      <span className="material-symbols-outlined text-amber-600 text-sm">two_wheeler</span>
+                      Rentals & Vehicles
+                    </h5>
+                    <div className="space-y-1 text-xs">
+                      {data.itemizedBudget.rentals.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-on-surface-variant font-medium">
+                          <span>{item.label}</span>
+                          <span className="font-bold text-on-surface">{item.price}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Activities */}
+                  <div className="bg-white rounded-xl p-3.5 border border-surface-container-highest">
+                    <h5 className="font-bold text-on-surface flex items-center gap-1.5 text-xs mb-2">
+                      <span className="material-symbols-outlined text-purple-600 text-sm">local_activity</span>
+                      Activities & Excursions
+                    </h5>
+                    <div className="space-y-1 text-xs">
+                      {data.itemizedBudget.activities.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-on-surface-variant font-medium">
+                          <span>{item.label}</span>
+                          <span className="font-bold text-on-surface">{item.price}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Meals */}
+                  <div className="bg-white rounded-xl p-3.5 border border-surface-container-highest">
+                    <h5 className="font-bold text-on-surface flex items-center gap-1.5 text-xs mb-2">
+                      <span className="material-symbols-outlined text-pink-600 text-sm">restaurant</span>
+                      Meals & Dining
+                    </h5>
+                    <div className="space-y-1 text-xs">
+                      {data.itemizedBudget.meals.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-on-surface-variant font-medium">
+                          <span>{item.label}</span>
+                          <span className="font-bold text-on-surface">{item.price}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Modal Actions */}
-            <div className="flex gap-2 justify-end pt-2">
+            <div className="flex gap-2 justify-end pt-3 border-t border-surface-container-highest">
               <button
-                onClick={() => alert('📄 Exporting budget receipt as PDF…')}
-                className="bg-primary-container text-white px-5 py-2 rounded-xl text-xs font-bold hover:bg-primary transition-colors cursor-pointer"
+                onClick={downloadBudgetReceiptPDF}
+                className="bg-primary-container text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-primary transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"
               >
+                <span className="material-symbols-outlined text-sm">download</span>
                 Download Budget Receipt PDF
               </button>
             </div>
@@ -860,7 +1268,7 @@ export default function ItineraryDetailPage({ trip, onBack }) {
         </div>
       )}
 
-      {/* 📲 Social Share Modal (Request 3 - WhatsApp, X, Instagram, Copy Link) */}
+      {/* 📲 Social Share Modal */}
       {showShareModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 relative shadow-2xl border border-surface-container-highest flex flex-col">
