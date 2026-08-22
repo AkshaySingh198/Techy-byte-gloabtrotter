@@ -61,7 +61,7 @@ export default function HeroSection({ onSearch }) {
       Extra bottom padding (pb-40) gives the dropdown ~200px of hero
       background beneath the search box before the dark stats strip starts.
     */
-    <section className="relative flex flex-col bg-[#111827] pt-24 pb-[155px]">
+    <section className="relative flex flex-col bg-[#111827] pt-16 pb-[155px]">
 
       {/* Amalfi Coast background — covers hero + extra space for dropdown */}
       <div
@@ -76,7 +76,7 @@ export default function HeroSection({ onSearch }) {
       </div>
 
       {/* Hero text + search */}
-      <div className="relative z-30 w-full max-w-4xl px-4 sm:px-6 mx-auto flex flex-col items-center text-center pt-8">
+      <div className="relative z-30 w-full max-w-4xl px-4 sm:px-6 mx-auto flex flex-col items-center text-center pt-2">
         <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold text-white mb-3 drop-shadow-lg tracking-tight leading-tight">
           <BlurText
             text="Plan Your Perfect Trip in Minutes"
@@ -86,7 +86,7 @@ export default function HeroSection({ onSearch }) {
             className="text-white drop-shadow-md"
           />
         </h1>
-        <p ref={subtitleRef} className="font-body text-sm sm:text-base text-white/90 max-w-xl mx-auto mb-8 drop-shadow font-medium leading-relaxed">
+        <p ref={subtitleRef} className="font-body text-sm sm:text-base text-white/90 max-w-xl mx-auto mb-6 drop-shadow font-medium leading-relaxed">
           Discover destinations, compare travel options, and build your itinerary in minutes.
         </p>
 
