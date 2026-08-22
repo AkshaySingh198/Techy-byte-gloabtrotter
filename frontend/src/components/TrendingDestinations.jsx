@@ -9,7 +9,7 @@ export const DESTINATIONS_DATA = [
     name: 'Santorini, Greece',
     image: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?auto=format&fit=crop&w=1200&q=80',
     category: 'Beach',
-    categoryType: ['All', 'Beach', 'Honeymoon'],
+    categoryType: ['All', 'Beach', 'Trending'],
     tag: 'Trending',
     tagColor: 'bg-primary-container text-white',
     tagIcon: 'local_fire_department',
@@ -39,7 +39,7 @@ export const DESTINATIONS_DATA = [
     name: 'New York City, USA',
     image: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&w=1200&q=80',
     category: 'Culture',
-    categoryType: ['All', 'Honeymoon', 'Adventure'],
+    categoryType: ['All', 'Trending', 'Adventure'],
     tag: 'Popular',
     tagColor: 'bg-primary text-white',
     tagIcon: 'apartment',
@@ -54,7 +54,7 @@ export const DESTINATIONS_DATA = [
     name: 'Kyoto, Japan',
     image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1200&q=80',
     category: 'Culture',
-    categoryType: ['All', 'Honeymoon', 'Adventure'],
+    categoryType: ['All', 'Trending', 'Adventure'],
     tag: 'Culture',
     tagColor: 'bg-secondary text-white',
     tagIcon: 'spa',
@@ -69,7 +69,7 @@ export const DESTINATIONS_DATA = [
     name: 'Interlaken, Switzerland',
     image: 'https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?auto=format&fit=crop&w=1200&q=80',
     category: 'Mountains',
-    categoryType: ['All', 'Mountains', 'Adventure', 'Honeymoon'],
+    categoryType: ['All', 'Mountains', 'Adventure', 'Trending'],
     tag: 'Scenic',
     tagColor: 'bg-secondary text-white',
     tagIcon: 'snowboarding',
@@ -84,7 +84,7 @@ export const DESTINATIONS_DATA = [
     name: 'Bali, Indonesia',
     image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=1200&q=80',
     category: 'Beach',
-    categoryType: ['All', 'Beach', 'Honeymoon'],
+    categoryType: ['All', 'Beach', 'Trending'],
     tag: 'Paradise',
     tagColor: 'bg-primary-container text-white',
     tagIcon: 'wb_sunny',
@@ -100,18 +100,18 @@ export default function TrendingDestinations({ onSelectDestination }) {
   const [activeCategory, setActiveCategory] = useState('All');
   const sectionRef = useRef(null);
 
-  // Category filter chips without 'Budget'
-  const categories = ['All', 'Beach', 'Mountains', 'Honeymoon', 'Adventure'];
+  // Category filter chips — Trending replaces Honeymoon
+  const categories = ['All', 'Beach', 'Mountains', 'Trending', 'Adventure'];
 
   const filteredDestinations = DESTINATIONS_DATA.filter(item =>
     item.categoryType.includes(activeCategory)
   );
 
   return (
-    <section id="destinations" ref={sectionRef} className="py-20 bg-surface relative">
+    <section id="destinations" ref={sectionRef} className="py-10 bg-surface relative">
       <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-5 gap-4">
           <div>
             <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-extrabold text-on-surface tracking-tight">
               Best Places to Visit This Season

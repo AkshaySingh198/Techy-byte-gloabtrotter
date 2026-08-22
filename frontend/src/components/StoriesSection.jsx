@@ -41,10 +41,10 @@ export default function StoriesSection({ onWriteStory }) {
   const sectionRef = useRef(null);
 
   return (
-    <section id="stories" ref={sectionRef} className="py-24 bg-surface-container-low relative">
+    <section id="stories" ref={sectionRef} className="py-10 bg-surface-container-low relative">
       <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-6">
           <div>
             <div className="inline-block text-primary font-bold tracking-wider uppercase text-xs mb-2">
               Community & Inspiration

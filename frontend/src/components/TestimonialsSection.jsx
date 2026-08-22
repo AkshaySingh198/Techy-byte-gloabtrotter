@@ -46,9 +46,9 @@ export const TESTIMONIALS_DATA = [
 
 export default function TestimonialsSection() {
   return (
-    <section id="testimonials" className="py-24 bg-surface relative overflow-hidden">
+    <section id="testimonials" className="py-10 bg-surface relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="text-center max-w-3xl mx-auto mb-16">
+        <div className="text-center max-w-3xl mx-auto mb-6">
           <div className="inline-block text-primary font-bold tracking-wider uppercase text-xs mb-2">
             Verified Experiences
           </div>

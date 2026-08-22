@@ -13,17 +13,21 @@ import Footer from './components/Footer';
 import AuthModal from './components/AuthModal';
 import DestinationModal from './components/DestinationModal';
 import PlanTripModal from './components/PlanTripModal';
-import SplashCursor from './components/react-bits/SplashCursor';
 
 gsap.registerPlugin(ScrollTrigger);
 
 export default function App() {
   const [authModal, setAuthModal] = useState({ isOpen: false, mode: 'login' });
   const [selectedDestination, setSelectedDestination] = useState(null);
+
+  // Pending search: stored when user tries to plan while not logged in
+  const [pendingSearch, setPendingSearch] = useState(null);
   const [activeSearch, setActiveSearch] = useState(null);
 
+  // Simulate logged-in state (would be from real auth context)
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
   useEffect(() => {
-    // Smooth GSAP scroll-triggered section fade & rise animations
     const sections = document.querySelectorAll('section');
     sections.forEach((sec) => {
       gsap.fromTo(
@@ -42,71 +46,56 @@ export default function App() {
         }
       );
     });
-
-    return () => {
-      ScrollTrigger.getAll().forEach((t) => t.kill());
-    };
+    return () => ScrollTrigger.getAll().forEach((t) => t.kill());
   }, []);
 
   const handleOpenAuth = (mode = 'login') => {
     setAuthModal({ isOpen: true, mode });
   };
 
+  // When user submits search — check if logged in first
   const handleSearchSubmit = (searchParams) => {
-    setActiveSearch(searchParams);
+    if (!isLoggedIn) {
+      setPendingSearch(searchParams);
+      setAuthModal({ isOpen: true, mode: 'login' });
+    } else {
+      setActiveSearch(searchParams);
+    }
+  };
+
+  // After login, resume the pending search
+  const handleAuthClose = () => {
+    setAuthModal({ isOpen: false, mode: 'login' });
+    if (pendingSearch) {
+      // Simulate login success on modal close
+      setIsLoggedIn(true);
+      setActiveSearch(pendingSearch);
+      setPendingSearch(null);
+    }
   };
 
   return (
     <div className="min-h-screen bg-background text-on-background flex flex-col font-sans selection:bg-primary-container selection:text-white relative">
-      {/* Dynamic Background-Aware SplashCursor Effect */}
-      <SplashCursor
-        DENSITY_DISSIPATION={3.5}
-        VELOCITY_DISSIPATION={2}
-        PRESSURE={0.1}
-        CURL={3}
-        SPLAT_RADIUS={0.22}
-        SPLAT_FORCE={6000}
-        COLOR_UPDATE_SPEED={10}
-        SHADING={true}
-        DYNAMIC_TRAVEL_MODE={true}
-        DARK_BG_COLOR="#FF6B4A" // Sunset Coral over dark sections
-        LIGHT_BG_COLOR="#0D9488" // Aegean Coastal Teal over light sections
-        INTERACTIVE_COLOR="#F59E0B" // Sunlit Gold on buttons & cards
-      />
 
       {/* Navbar */}
       <Navbar onOpenAuth={handleOpenAuth} />
 
       {/* Main Content Sections */}
       <main className="flex-1">
-        {/* 1. Hero with Search */}
         <HeroSection onSearch={handleSearchSubmit} />
-
-        {/* 2. Stats Strip with Slow Smooth CountUp */}
         <StatsStrip />
-
-        {/* 3. Trending Destinations with 3D Tilt & Auto-scroll */}
-        <TrendingDestinations
-          onSelectDestination={(dest) => setSelectedDestination(dest)}
-        />
-
-        {/* 4. Stories from Fellow Travelers */}
-        <StoriesSection
-          onWriteStory={() => handleOpenAuth('signup')}
-        />
-
-        {/* 5. Traveler Testimonials */}
+        <TrendingDestinations onSelectDestination={(dest) => setSelectedDestination(dest)} />
+        <StoriesSection onWriteStory={() => handleOpenAuth('signup')} />
         <TestimonialsSection />
       </main>
 
-      {/* 6. Comprehensive Footer */}
       <Footer />
 
-      {/* Interactive Modals */}
+      {/* Auth Modal — triggered on plan or by nav buttons */}
       <AuthModal
         isOpen={authModal.isOpen}
         initialMode={authModal.mode}
-        onClose={() => setAuthModal({ isOpen: false, mode: 'login' })}
+        onClose={handleAuthClose}
       />
 
       <DestinationModal
