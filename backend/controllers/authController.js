@@ -5,7 +5,8 @@ const { generateTokens, JWT_REFRESH_SECRET } = require('../middleware/auth');
 
 exports.register = async (req, res, next) => {
   try {
-    const { name, email, password, phone, city, state, gender, age } = req.body;
+    const { name, password, phone, city, state, gender, age } = req.body;
+    const email = req.body.email ? req.body.email.trim().toLowerCase() : '';
 
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
@@ -49,7 +50,8 @@ exports.register = async (req, res, next) => {
 
 exports.login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const email = req.body.email ? req.body.email.trim().toLowerCase() : '';
 
     const user = await User.findOne({ where: { email } });
     if (!user) {

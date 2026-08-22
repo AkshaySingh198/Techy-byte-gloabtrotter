@@ -260,31 +260,6 @@ function MainApp() {
         )}
       </main>
 
-      {/* Quick Footer Bar */}
-      <div className="bg-surface-container-high py-3 px-4 border-t border-surface-container-highest flex justify-center flex-wrap gap-3 text-xs font-bold text-on-surface">
-        <button onClick={() => handlePageNavigate('calendar-timeline')} className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer">
-          <span className="material-symbols-outlined text-sm">calendar_month</span> Trip Timeline
-        </button>
-        <span className="opacity-30">•</span>
-        <button onClick={() => handlePageNavigate('shared-itinerary')} className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer">
-          <span className="material-symbols-outlined text-sm">groups</span> Shared Itinerary &amp; Group Chat
-        </button>
-        <span className="opacity-30">•</span>
-        <button onClick={() => handlePageNavigate('profile-settings')} className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer">
-          <span className="material-symbols-outlined text-sm">settings</span> Profile &amp; Settings
-        </button>
-        <span className="opacity-30">•</span>
-        <button onClick={() => {
-          if (!user) {
-            setAuthModal({ isOpen: true, mode: 'login' });
-          } else {
-            setShareCardOpen(true);
-          }
-        }} className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer">
-          <span className="material-symbols-outlined text-sm">share</span> Social Share Card
-        </button>
-      </div>
-
       <Footer />
 
       {/* Auth Modal */}

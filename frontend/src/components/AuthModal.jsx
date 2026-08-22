@@ -184,10 +184,13 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onAu
   const [emailVerified, setEmailVerified] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [errors, setErrors] = useState({});
+  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
     setMode(initialMode);
     setStep(0);
+    setAuthError('');
+    setErrors({});
   }, [initialMode, isOpen]);
 
   if (!isOpen) return null;
@@ -195,6 +198,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onAu
   const update = (field, val) => {
     setFormData((prev) => ({ ...prev, [field]: val }));
     setErrors((prev) => ({ ...prev, [field]: '' }));
+    setAuthError('');
   };
 
   /* ---- Step Validators ---- */
@@ -236,6 +240,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onAu
   };
 
   const handleNext = async () => {
+    setAuthError('');
     if (step === 0 && !validateProfile()) return;
     if (step === 1 && !validateVerify()) return;
     if (step === 2) {
@@ -244,7 +249,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onAu
       try {
         const result = await registerUser({
           name: formData.fullName,
-          email: formData.email,
+          email: formData.email.trim(),
           password: formData.password,
           phone: formData.phone,
           city: formData.city,
@@ -252,15 +257,16 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onAu
           gender: formData.gender,
           age: parseInt(formData.age, 10)
         });
-        const u = result?.user || { email: formData.email, name: formData.fullName };
-        onAuthSuccess?.(u);
-        onLoginSuccess?.(u);
-        onClose();
+        const u = result?.user;
+        if (u) {
+          onAuthSuccess?.(u);
+          onLoginSuccess?.(u);
+          onClose();
+        } else {
+          setAuthError('Registration failed. Please try again.');
+        }
       } catch (err) {
-        const fallbackUser = { email: formData.email, name: formData.fullName };
-        onAuthSuccess?.(fallbackUser);
-        onLoginSuccess?.(fallbackUser);
-        onClose();
+        setAuthError(err.message || 'Registration failed.');
       } finally {
         setLoading(false);
       }
@@ -271,23 +277,25 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onAu
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
+    setAuthError('');
     const e2 = {};
-    if (!loginEmail) e2.loginEmail = 'Email is required.';
+    if (!loginEmail.trim()) e2.loginEmail = 'Email is required.';
     if (!loginPassword) e2.loginPassword = 'Password is required.';
     if (Object.keys(e2).length) { setErrors(e2); return; }
 
     setLoading(true);
     try {
-      const result = await loginUser({ email: loginEmail, password: loginPassword });
-      const u = result?.user || { email: loginEmail, name: loginEmail.split('@')[0] };
-      onAuthSuccess?.(u);
-      onLoginSuccess?.(u);
-      onClose();
+      const result = await loginUser({ email: loginEmail.trim(), password: loginPassword });
+      const u = result?.user;
+      if (u) {
+        onAuthSuccess?.(u);
+        onLoginSuccess?.(u);
+        onClose();
+      } else {
+        setAuthError('Login failed. Invalid email or password.');
+      }
     } catch (err) {
-      const fallbackUser = { email: loginEmail, name: loginEmail.split('@')[0] };
-      onAuthSuccess?.(fallbackUser);
-      onLoginSuccess?.(fallbackUser);
-      onClose();
+      setAuthError(err.message || 'Invalid email or password.');
     } finally {
       setLoading(false);
     }
@@ -331,13 +339,20 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onAu
             {['login', 'signup'].map((m) => (
               <button
                 key={m}
-                onClick={() => { setMode(m); setStep(0); setErrors({}); }}
+                onClick={() => { setMode(m); setStep(0); setErrors({}); setAuthError(''); }}
                 className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${mode === m ? 'bg-white text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
               >
                 {m === 'login' ? 'Log In' : 'Sign Up'}
               </button>
             ))}
           </div>
+
+          {authError && (
+            <div className="p-3 mb-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
+              <span className="material-symbols-outlined text-lg text-red-500">error</span>
+              <span>{authError}</span>
+            </div>
+          )}
 
           {/* ===================== LOGIN ===================== */}
           {mode === 'login' && (

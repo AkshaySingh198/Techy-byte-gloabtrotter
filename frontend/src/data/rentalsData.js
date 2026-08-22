@@ -47,7 +47,7 @@ export const MOCK_RENTALS = [
     fuelType: 'Petrol',
     rating: 4.7,
     reviewsCount: 115,
-    image: 'https://images.unsplash.com/photo-1525160354320-d8e92641c563?w=600&auto=format&fit=crop&q=80',
+    image: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=600&auto=format&fit=crop&q=80',
     transmission: 'Automatic',
     seats: 2,
     tagline: 'Spacious under-seat storage & high mileage',

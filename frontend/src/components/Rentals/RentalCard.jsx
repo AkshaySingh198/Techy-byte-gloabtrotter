@@ -46,6 +46,10 @@ export default function RentalCard({ rental, isSelected, onSelect }) {
             alt={model}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=600&auto=format&fit=crop&q=80';
+            }}
           />
 
           {/* Badges Overlay */}

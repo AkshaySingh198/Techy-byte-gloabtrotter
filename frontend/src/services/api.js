@@ -12,7 +12,10 @@ export async function registerUser(userData) {
     body: JSON.stringify(userData)
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Registration failed');
+  if (!res.ok) {
+    const errorMsg = data.error || (Array.isArray(data.errors) ? data.errors.map(e => e.message).join(', ') : null) || 'Registration failed';
+    throw new Error(errorMsg);
+  }
   if (data.data?.accessToken) {
     localStorage.setItem('globetrotter_token', data.data.accessToken);
   }
@@ -26,7 +29,10 @@ export async function loginUser(credentials) {
     body: JSON.stringify(credentials)
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Login failed');
+  if (!res.ok) {
+    const errorMsg = data.error || (Array.isArray(data.errors) ? data.errors.map(e => e.message).join(', ') : null) || 'Login failed';
+    throw new Error(errorMsg);
+  }
   if (data.data?.accessToken) {
     localStorage.setItem('globetrotter_token', data.data.accessToken);
   }
