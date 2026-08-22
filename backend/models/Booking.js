@@ -5,40 +5,46 @@ const Booking = sequelize.define('Booking', {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
-    primaryKey: true
+    primaryKey: true,
+    field: 'booking_id'
   },
   trip_id: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true
   },
   type: {
-    type: DataTypes.ENUM('hotel', 'flight', 'train', 'bus', 'bike', 'car', 'cab'),
-    allowNull: false
+    type: DataTypes.STRING,
+    allowNull: false,
+    field: 'booking_type'
   },
   provider: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: true,
+    field: 'details'
   },
   cost: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
-    defaultValue: 0.00
+    defaultValue: 0.00,
+    field: 'amount'
   },
   start_time: {
     type: DataTypes.DATE,
-    allowNull: true
+    allowNull: true,
+    field: 'booked_at'
   },
   end_time: {
     type: DataTypes.DATE,
     allowNull: true
   },
   status: {
-    type: DataTypes.ENUM('confirmed', 'pending', 'cancelled'),
-    defaultValue: 'confirmed'
+    type: DataTypes.STRING,
+    defaultValue: 'confirmed',
+    field: 'booking_status'
   }
 }, {
   tableName: 'bookings',
-  timestamps: true,
+  timestamps: false,
   underscored: true
 });
 

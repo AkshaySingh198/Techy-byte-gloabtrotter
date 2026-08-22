@@ -1,0 +1,351 @@
+{
+	"info": {
+		"_postman_id": "globetrotter-api-collection",
+		"name": "GlobeTrotter API",
+		"description": "Complete Postman collection for GlobeTrotter Travel Planning Platform backend APIs.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5000/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "authToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "tripId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "stopId",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Health & Meta",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["health"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Authentication",
+			"item": [
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Aarav Patel\",\n  \"email\": \"aarav.patel@example.com\",\n  \"password\": \"Password123!\",\n  \"phone\": \"9876543210\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"gender\": \"male\",\n  \"age\": 25\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Login User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"aarav.patel@example.com\",\n  \"password\": \"Password123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Get Profile (/me)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{authToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/me",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "me"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "3. Cities & Activities",
+			"item": [
+				{
+					"name": "Get Indian Cities",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/cities",
+							"host": ["{{baseUrl}}"],
+							"path": ["cities"]
+						}
+					}
+				},
+				{
+					"name": "Get City Activities",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/cities/1/activities",
+							"host": ["{{baseUrl}}"],
+							"path": ["cities", "1", "activities"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Trip Management",
+			"item": [
+				{
+					"name": "Create Trip",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{authToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Goa & Sikkim Beach-to-Mountain Trip\",\n  \"start_date\": \"2026-10-15\",\n  \"end_date\": \"2026-10-25\",\n  \"description\": \"Exploring Baga beach watersports and Sikkim alpine valleys\",\n  \"visibility\": \"group\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/trips",
+							"host": ["{{baseUrl}}"],
+							"path": ["trips"]
+						}
+					}
+				},
+				{
+					"name": "List User Trips",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{authToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/trips?filter=all",
+							"host": ["{{baseUrl}}"],
+							"path": ["trips"],
+							"query": [{ "key": "filter", "value": "all" }]
+						}
+					}
+				},
+				{
+					"name": "Get Trip Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{authToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/trips/{{tripId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["trips", "{{tripId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "5. Itinerary Builder",
+			"item": [
+				{
+					"name": "Add City Stop",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{authToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"trip_id\": 1,\n  \"city_id\": 1,\n  \"arrival_date\": \"2026-10-15\",\n  \"departure_date\": \"2026-10-20\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/itinerary/stops",
+							"host": ["{{baseUrl}}"],
+							"path": ["itinerary", "stops"]
+						}
+					}
+				},
+				{
+					"name": "Assign Activity",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{authToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"stop_id\": 1,\n  \"activity_id\": 1,\n  \"scheduled_time\": \"10:30 AM\",\n  \"day_number\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/itinerary/activities",
+							"host": ["{{baseUrl}}"],
+							"path": ["itinerary", "activities"]
+						}
+					}
+				},
+				{
+					"name": "Get Day-wise Itinerary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{authToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/itinerary/trips/{{tripId}}/daywise",
+							"host": ["{{baseUrl}}"],
+							"path": ["itinerary", "trips", "{{tripId}}", "daywise"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "6. Cost Engine & Suggestions",
+			"item": [
+				{
+					"name": "Get Trip Cost Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{authToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/costs/trips/{{tripId}}/summary",
+							"host": ["{{baseUrl}}"],
+							"path": ["costs", "trips", "{{tripId}}", "summary"]
+						}
+					}
+				},
+				{
+					"name": "Route & Transport Comparison",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"start_city\": \"Mumbai\",\n  \"end_city\": \"Goa\",\n  \"budget_tier\": \"mid\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/suggestions/recommend",
+							"host": ["{{baseUrl}}"],
+							"path": ["suggestions", "recommend"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "7. Collaboration & Expenses",
+			"item": [
+				{
+					"name": "Add Group Expense",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{authToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"trip_id\": 1,\n  \"amount\": 3600,\n  \"description\": \"Baga Beach Shack Seafood Dinner\",\n  \"split_type\": \"equal\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/collaboration/expenses",
+							"host": ["{{baseUrl}}"],
+							"path": ["collaboration", "expenses"]
+						}
+					}
+				},
+				{
+					"name": "Get Trip Net Balances",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{authToken}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/collaboration/trips/{{tripId}}/balances",
+							"host": ["{{baseUrl}}"],
+							"path": ["collaboration", "trips", "{{tripId}}", "balances"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "8. Blogs & Social Share",
+			"item": [
+				{
+					"name": "Publish Travel Blog",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{authToken}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"My Unforgettable Goa Vacation\",\n  \"content\": \"Sun, sand, and fantastic seafood at Fontainhas Latin Quarter!\",\n  \"images\": [\"https://images.unsplash.com/photo-1512343879784-a960bf40e7f2\"]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/blogs",
+							"host": ["{{baseUrl}}"],
+							"path": ["blogs"]
+						}
+					}
+				},
+				{
+					"name": "Generate Social Share Card",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/share-card/trips/{{tripId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["share-card", "trips", "{{tripId}}"]
+						}
+					}
+				}
+			]
+		}
+	]
+}

@@ -1,4 +1,3 @@
-// #starting server
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
@@ -81,7 +80,11 @@ const PORT = process.env.PORT || 5000;
 async function startServer() {
   try {
     await connectDB();
-    await sequelize.sync({ force: false });
+    try {
+      await sequelize.sync({ alter: true });
+    } catch (e) {
+      await sequelize.sync({ force: false });
+    }
     await seedDatabase();
 
     server.listen(PORT, () => {

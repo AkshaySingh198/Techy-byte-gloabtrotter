@@ -13,11 +13,11 @@ function generateTokens(user) {
   };
 
   const accessToken = jwt.sign(payload, JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+    expiresIn: process.env.JWT_EXPIRES_IN || '1d'
   });
 
   const refreshToken = jwt.sign(payload, JWT_REFRESH_SECRET, {
-    expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d'
+    expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '1d'
   });
 
   return { accessToken, refreshToken };

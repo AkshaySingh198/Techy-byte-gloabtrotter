@@ -5,7 +5,8 @@ const User = sequelize.define('User', {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
-    primaryKey: true
+    primaryKey: true,
+    field: 'user_id'
   },
   name: {
     type: DataTypes.STRING,
@@ -21,7 +22,8 @@ const User = sequelize.define('User', {
   },
   password_hash: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
+    field: 'password'
   },
   phone: {
     type: DataTypes.STRING,
@@ -36,8 +38,8 @@ const User = sequelize.define('User', {
     allowNull: true
   },
   gender: {
-    type: DataTypes.ENUM('male', 'female', 'other', 'prefer_not_to_say'),
-    defaultValue: 'prefer_not_to_say'
+    type: DataTypes.STRING,
+    defaultValue: 'other'
   },
   age: {
     type: DataTypes.INTEGER,
@@ -53,7 +55,7 @@ const User = sequelize.define('User', {
   }
 }, {
   tableName: 'users',
-  timestamps: true,
+  timestamps: false,
   underscored: true
 });
 
