@@ -160,7 +160,7 @@ const AppleIcon = () => (
 );
 
 /* ==================== MAIN COMPONENT ==================== */
-export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
+export default function AuthModal({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) {
   const [mode, setMode] = useState(initialMode);
 
   // Login state
@@ -239,7 +239,11 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
     if (step === 2) {
       if (!validatePassword()) return;
       alert('🎉 Account created successfully! Welcome to GlobeTrotter!');
-      onClose();
+      if (onLoginSuccess) {
+        onLoginSuccess({ email: formData.email, name: formData.fullName });
+      } else {
+        onClose();
+      }
       return;
     }
     setStep((s) => s + 1);
@@ -252,7 +256,11 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
     if (!loginPassword) e2.loginPassword = 'Password is required.';
     if (Object.keys(e2).length) { setErrors(e2); return; }
     alert(`✈️ Welcome back! Logged in as ${loginEmail}`);
-    onClose();
+    if (onLoginSuccess) {
+      onLoginSuccess({ email: loginEmail, name: loginEmail.split('@')[0] });
+    } else {
+      onClose();
+    }
   };
 
   const inputCls = (field) =>
@@ -404,8 +412,15 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
               {/* Google only — Apple removed */}
               <button
                 type="button"
-                onClick={() => { alert('Google login simulated!'); onClose(); }}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-surface-container-highest hover:bg-surface-container text-sm font-semibold transition-colors"
+                onClick={() => {
+                  alert('Google login simulated!');
+                  if (onLoginSuccess) {
+                    onLoginSuccess({ email: 'alex.google@example.com', name: 'Alex Morgan' });
+                  } else {
+                    onClose();
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-surface-container-highest hover:bg-surface-container text-sm font-semibold transition-colors cursor-pointer"
               >
                 <GoogleIcon />
                 Continue with Google

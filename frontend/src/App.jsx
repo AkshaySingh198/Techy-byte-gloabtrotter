@@ -3,12 +3,11 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 import Navbar from './components/Navbar';
-import HeroSection from './components/HeroSection';
-import StatsStrip from './components/StatsStrip';
-import TrendingDestinations from './components/TrendingDestinations';
-import StoriesSection from './components/StoriesSection';
-import TestimonialsSection from './components/TestimonialsSection';
 import Footer from './components/Footer';
+
+import HomePage from './pages/HomePage';
+import MyTripsPage from './pages/MyTripsPage';
+import ItineraryDetailPage from './pages/ItineraryDetailPage';
 
 import AuthModal from './components/AuthModal';
 import DestinationModal from './components/DestinationModal';
@@ -17,15 +16,19 @@ import PlanTripModal from './components/PlanTripModal';
 gsap.registerPlugin(ScrollTrigger);
 
 export default function App() {
+  const [activePage, setActivePage] = useState('home');
   const [authModal, setAuthModal] = useState({ isOpen: false, mode: 'login' });
   const [selectedDestination, setSelectedDestination] = useState(null);
+  const [selectedTrip, setSelectedTrip] = useState(null);
 
-  // Pending search: stored when user tries to plan while not logged in
+  // Authentication State
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Pending Actions (when user tries to access protected feature while logged out)
+  const [pendingNavigation, setPendingNavigation] = useState(null);
   const [pendingSearch, setPendingSearch] = useState(null);
   const [activeSearch, setActiveSearch] = useState(null);
-
-  // Simulate logged-in state (would be from real auth context)
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     const sections = document.querySelectorAll('section');
@@ -47,13 +50,23 @@ export default function App() {
       );
     });
     return () => ScrollTrigger.getAll().forEach((t) => t.kill());
-  }, []);
+  }, [activePage]);
+
+  // Handle Navigation with Auth Gate
+  const handlePageChange = (page) => {
+    if ((page === 'my-trips' || page === 'trip-detail') && !isLoggedIn) {
+      setPendingNavigation('my-trips');
+      setAuthModal({ isOpen: true, mode: 'login' });
+      return;
+    }
+    setActivePage(page);
+  };
 
   const handleOpenAuth = (mode = 'login') => {
     setAuthModal({ isOpen: true, mode });
   };
 
-  // When user submits search — check if logged in first
+  // When user submits search in HeroSection
   const handleSearchSubmit = (searchParams) => {
     if (!isLoggedIn) {
       setPendingSearch(searchParams);
@@ -63,39 +76,99 @@ export default function App() {
     }
   };
 
-  // After login, resume the pending search
-  const handleAuthClose = () => {
+  // Login / Signup Success Callback
+  const handleLoginSuccess = (userData) => {
+    setIsLoggedIn(true);
+    setCurrentUser(userData || { name: 'Alex Morgan', email: 'alex@example.com' });
     setAuthModal({ isOpen: false, mode: 'login' });
-    if (pendingSearch) {
-      // Simulate login success on modal close
-      setIsLoggedIn(true);
+
+    if (pendingNavigation) {
+      setActivePage(pendingNavigation);
+      setPendingNavigation(null);
+    } else if (pendingSearch) {
       setActiveSearch(pendingSearch);
       setPendingSearch(null);
     }
   };
 
+  // Logout Handler
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentUser(null);
+    if (activePage === 'my-trips' || activePage === 'trip-detail') {
+      setActivePage('home');
+    }
+  };
+
+  // Modal Dismiss without completing Auth
+  const handleAuthClose = () => {
+    setAuthModal({ isOpen: false, mode: 'login' });
+    setPendingNavigation(null);
+    setPendingSearch(null);
+  };
+
   return (
     <div className="min-h-screen bg-background text-on-background flex flex-col font-sans selection:bg-primary-container selection:text-white relative">
-
       {/* Navbar */}
-      <Navbar onOpenAuth={handleOpenAuth} />
+      <Navbar
+        activePage={activePage}
+        onPageChange={handlePageChange}
+        onOpenAuth={handleOpenAuth}
+        isLoggedIn={isLoggedIn}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+      />
 
-      {/* Main Content Sections */}
+      {/* Dynamic Page Component rendering */}
       <main className="flex-1">
-        <HeroSection onSearch={handleSearchSubmit} />
-        <StatsStrip />
-        <TrendingDestinations onSelectDestination={(dest) => setSelectedDestination(dest)} />
-        <StoriesSection onWriteStory={() => handleOpenAuth('signup')} />
-        <TestimonialsSection />
+        {activePage === 'home' && (
+          <HomePage
+            onSearchSubmit={handleSearchSubmit}
+            onSelectDestination={(dest) => setSelectedDestination(dest)}
+            onOpenAuth={handleOpenAuth}
+          />
+        )}
+
+        {activePage === 'my-trips' && isLoggedIn && (
+          <MyTripsPage
+            onPlanNewTrip={() => {
+              setActivePage('home');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onExploreTrending={() => {
+              setActivePage('home');
+              setTimeout(() => {
+                const el = document.getElementById('destinations');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }, 50);
+            }}
+            onSelectTrip={(trip) => {
+              setSelectedTrip(trip);
+              setActivePage('trip-detail');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        )}
+
+        {activePage === 'trip-detail' && isLoggedIn && (
+          <ItineraryDetailPage
+            trip={selectedTrip}
+            onBack={() => {
+              setActivePage('my-trips');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        )}
       </main>
 
       <Footer />
 
-      {/* Auth Modal — triggered on plan or by nav buttons */}
+      {/* Auth Modal */}
       <AuthModal
         isOpen={authModal.isOpen}
         initialMode={authModal.mode}
         onClose={handleAuthClose}
+        onLoginSuccess={handleLoginSuccess}
       />
 
       <DestinationModal

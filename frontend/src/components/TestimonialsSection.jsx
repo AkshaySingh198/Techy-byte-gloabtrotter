@@ -56,7 +56,7 @@ export default function TestimonialsSection() {
             What Our Travelers Say
           </h2>
           <p className="font-body text-on-surface-variant text-lg mt-3">
-            Join over 12,000+ passionate adventurers who create memorable journeys with GlobeTrotter.
+            Join over 5,200+ passionate adventurers who create memorable journeys with GlobeTrotter.
           </p>
         </div>
 

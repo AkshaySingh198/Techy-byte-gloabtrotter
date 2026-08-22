@@ -84,5 +84,5 @@ export function searchCities(query) {
       c.city.toLowerCase().includes(clean) ||
       c.country.toLowerCase().includes(clean) ||
       c.code.toLowerCase().includes(clean)
-  ).slice(0, 5);
+  ).slice(0, 4);
 }
