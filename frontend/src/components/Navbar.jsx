@@ -2,12 +2,16 @@ import { useState, useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import Magnet from './react-bits/Magnet';
 import ShinyText from './react-bits/ShinyText';
+import { useTrip } from '../context/TripContext';
 
 export default function Navbar({ activePage = 'home', onPageChange, onOpenAuth, isLoggedIn, currentUser, onLogout }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const navRef = useRef(null);
+  const { activeTab, setActiveTab, tripState } = useTrip();
+
+  const currentTab = activePage || activeTab;
 
   useEffect(() => {
     gsap.fromTo(
@@ -27,6 +31,7 @@ export default function Navbar({ activePage = 'home', onPageChange, onOpenAuth, 
   const handleNavClick = (page, sectionId) => {
     setMobileMenuOpen(false);
     setUserDropdownOpen(false);
+    setActiveTab(page);
     if (onPageChange) {
       onPageChange(page);
     }
@@ -53,18 +58,19 @@ export default function Navbar({ activePage = 'home', onPageChange, onOpenAuth, 
         {/* Brand */}
         <button
           onClick={() => handleNavClick('home')}
-          className="font-display text-lg sm:text-xl font-bold text-primary tracking-tight hover:opacity-90 transition-opacity cursor-pointer"
+          className="font-display text-lg sm:text-xl font-bold text-primary tracking-tight hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1.5"
         >
+          <span className="material-symbols-outlined text-xl">travel_explore</span>
           GlobeTrotter
         </button>
 
-        {/* Desktop Nav - Explore, My Trips, Blogs, Reviews */}
+        {/* Desktop Nav - Explore, Rentals, Itinerary, My Trips, Blogs, Reviews */}
         <nav className="hidden md:flex items-center gap-6 text-xs sm:text-sm font-semibold">
           <button
-            onClick={() => handleNavClick('home', 'destinations')}
-            className={`transition-colors cursor-pointer ${
-              activePage === 'home'
-                ? 'text-primary border-b-2 border-primary pb-0.5'
+            onClick={() => handleNavClick('home')}
+            className={`transition-all cursor-pointer pb-0.5 ${
+              currentTab === 'home'
+                ? 'text-primary border-b-2 border-primary font-bold'
                 : 'text-on-surface-variant hover:text-primary'
             }`}
           >
@@ -72,10 +78,37 @@ export default function Navbar({ activePage = 'home', onPageChange, onOpenAuth, 
           </button>
 
           <button
+            onClick={() => handleNavClick('rentals')}
+            className={`transition-all cursor-pointer pb-0.5 flex items-center gap-1 ${
+              currentTab === 'rentals'
+                ? 'text-primary border-b-2 border-primary font-bold'
+                : 'text-on-surface-variant hover:text-primary'
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">directions_car</span>
+            Rentals
+            {tripState.selectedRental && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            )}
+          </button>
+
+          <button
+            onClick={() => handleNavClick('itinerary')}
+            className={`transition-all cursor-pointer pb-0.5 flex items-center gap-1 ${
+              currentTab === 'itinerary'
+                ? 'text-primary border-b-2 border-primary font-bold'
+                : 'text-on-surface-variant hover:text-primary'
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">map</span>
+            Itinerary
+          </button>
+
+          <button
             onClick={() => handleNavClick('my-trips')}
             className={`transition-colors cursor-pointer ${
-              activePage === 'my-trips'
-                ? 'text-primary border-b-2 border-primary pb-0.5'
+              currentTab === 'my-trips'
+                ? 'text-primary border-b-2 border-primary pb-0.5 font-bold'
                 : 'text-on-surface-variant hover:text-primary'
             }`}
           >
@@ -175,14 +208,33 @@ export default function Navbar({ activePage = 'home', onPageChange, onOpenAuth, 
       {mobileMenuOpen && (
         <div className="md:hidden bg-surface/95 backdrop-blur-xl border-b border-surface-container-highest px-6 py-3 space-y-2 text-sm font-semibold">
           <button
-            onClick={() => handleNavClick('home', 'destinations')}
-            className="block text-left w-full py-1 text-primary"
+            onClick={() => handleNavClick('home')}
+            className={`block w-full text-left py-1 ${currentTab === 'home' ? 'text-primary font-bold' : 'text-on-surface-variant'}`}
           >
             Explore
           </button>
           <button
+            onClick={() => handleNavClick('rentals')}
+            className={`block w-full text-left py-1 flex items-center justify-between ${currentTab === 'rentals' ? 'text-primary font-bold' : 'text-on-surface-variant'}`}
+          >
+            <span className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-base">directions_car</span>
+              Rentals
+            </span>
+            {tripState.selectedRental && (
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-700 px-2 py-0.5 rounded-full font-bold">1 Selected</span>
+            )}
+          </button>
+          <button
+            onClick={() => handleNavClick('itinerary')}
+            className={`block w-full text-left py-1 flex items-center gap-1.5 ${currentTab === 'itinerary' ? 'text-primary font-bold' : 'text-on-surface-variant'}`}
+          >
+            <span className="material-symbols-outlined text-base">map</span>
+            Itinerary Builder
+          </button>
+          <button
             onClick={() => handleNavClick('my-trips')}
-            className="block text-left w-full py-1 text-on-surface-variant hover:text-primary"
+            className={`block w-full text-left py-1 ${currentTab === 'my-trips' ? 'text-primary font-bold' : 'text-on-surface-variant'}`}
           >
             My Trips
           </button>

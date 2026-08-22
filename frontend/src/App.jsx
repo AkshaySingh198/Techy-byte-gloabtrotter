@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
+import { TripProvider, useTrip } from './context/TripContext';
 import Navbar from './components/Navbar';
-import Footer from './components/Footer';
-
 import HomePage from './pages/HomePage';
 import MyTripsPage from './pages/MyTripsPage';
 import ItineraryDetailPage from './pages/ItineraryDetailPage';
+import RentalsPage from './components/Rentals/RentalsPage';
+import ItineraryBuilderPage from './components/Itinerary/ItineraryBuilderPage';
+import Footer from './components/Footer';
 
 import AuthModal from './components/AuthModal';
 import DestinationModal from './components/DestinationModal';
@@ -15,8 +17,7 @@ import PlanTripModal from './components/PlanTripModal';
 
 gsap.registerPlugin(ScrollTrigger);
 
-export default function App() {
-  const [activePage, setActivePage] = useState('home');
+function MainApp() {
   const [authModal, setAuthModal] = useState({ isOpen: false, mode: 'login' });
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [selectedTrip, setSelectedTrip] = useState(null);
@@ -25,41 +26,45 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
-  // Pending Actions (when user tries to access protected feature while logged out)
+  // Pending Actions
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const [pendingSearch, setPendingSearch] = useState(null);
   const [activeSearch, setActiveSearch] = useState(null);
 
+  const { activeTab, setActiveTab, updateTrip } = useTrip();
+
   useEffect(() => {
-    const sections = document.querySelectorAll('section');
-    sections.forEach((sec) => {
-      gsap.fromTo(
-        sec,
-        { opacity: 0.88, y: 15 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.7,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: sec,
-            start: 'top 85%',
-            toggleActions: 'play none none none',
-          },
-        }
-      );
-    });
+    if (activeTab === 'home') {
+      const sections = document.querySelectorAll('section');
+      sections.forEach((sec) => {
+        gsap.fromTo(
+          sec,
+          { opacity: 0.88, y: 15 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.7,
+            ease: 'power2.out',
+            scrollTrigger: {
+              trigger: sec,
+              start: 'top 85%',
+              toggleActions: 'play none none none',
+            },
+          }
+        );
+      });
+    }
     return () => ScrollTrigger.getAll().forEach((t) => t.kill());
-  }, [activePage]);
+  }, [activeTab]);
 
   // Handle Navigation with Auth Gate
   const handlePageChange = (page) => {
     if ((page === 'my-trips' || page === 'trip-detail') && !isLoggedIn) {
-      setPendingNavigation('my-trips');
+      setPendingNavigation(page);
       setAuthModal({ isOpen: true, mode: 'login' });
       return;
     }
-    setActivePage(page);
+    setActiveTab(page);
   };
 
   const handleOpenAuth = (mode = 'login') => {
@@ -68,6 +73,11 @@ export default function App() {
 
   // When user submits search in HeroSection
   const handleSearchSubmit = (searchParams) => {
+    updateTrip({
+      fromCity: searchParams.from,
+      toCity: searchParams.to,
+    });
+
     if (!isLoggedIn) {
       setPendingSearch(searchParams);
       setAuthModal({ isOpen: true, mode: 'login' });
@@ -83,7 +93,7 @@ export default function App() {
     setAuthModal({ isOpen: false, mode: 'login' });
 
     if (pendingNavigation) {
-      setActivePage(pendingNavigation);
+      setActiveTab(pendingNavigation);
       setPendingNavigation(null);
     } else if (pendingSearch) {
       setActiveSearch(pendingSearch);
@@ -95,8 +105,8 @@ export default function App() {
   const handleLogout = () => {
     setIsLoggedIn(false);
     setCurrentUser(null);
-    if (activePage === 'my-trips' || activePage === 'trip-detail') {
-      setActivePage('home');
+    if (activeTab === 'my-trips' || activeTab === 'trip-detail') {
+      setActiveTab('home');
     }
   };
 
@@ -111,7 +121,7 @@ export default function App() {
     <div className="min-h-screen bg-background text-on-background flex flex-col font-sans selection:bg-primary-container selection:text-white relative">
       {/* Navbar */}
       <Navbar
-        activePage={activePage}
+        activePage={activeTab}
         onPageChange={handlePageChange}
         onOpenAuth={handleOpenAuth}
         isLoggedIn={isLoggedIn}
@@ -121,7 +131,7 @@ export default function App() {
 
       {/* Dynamic Page Component rendering */}
       <main className="flex-1">
-        {activePage === 'home' && (
+        {activeTab === 'home' && (
           <HomePage
             onSearchSubmit={handleSearchSubmit}
             onSelectDestination={(dest) => setSelectedDestination(dest)}
@@ -129,14 +139,18 @@ export default function App() {
           />
         )}
 
-        {activePage === 'my-trips' && isLoggedIn && (
+        {activeTab === 'rentals' && <RentalsPage />}
+
+        {activeTab === 'itinerary' && <ItineraryBuilderPage />}
+
+        {activeTab === 'my-trips' && isLoggedIn && (
           <MyTripsPage
             onPlanNewTrip={() => {
-              setActivePage('home');
+              setActiveTab('home');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             onExploreTrending={() => {
-              setActivePage('home');
+              setActiveTab('home');
               setTimeout(() => {
                 const el = document.getElementById('destinations');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -144,17 +158,17 @@ export default function App() {
             }}
             onSelectTrip={(trip) => {
               setSelectedTrip(trip);
-              setActivePage('trip-detail');
+              setActiveTab('trip-detail');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
           />
         )}
 
-        {activePage === 'trip-detail' && isLoggedIn && (
+        {activeTab === 'trip-detail' && isLoggedIn && (
           <ItineraryDetailPage
             trip={selectedTrip}
             onBack={() => {
-              setActivePage('my-trips');
+              setActiveTab('my-trips');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
           />
@@ -181,5 +195,13 @@ export default function App() {
         onClose={() => setActiveSearch(null)}
       />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <TripProvider>
+      <MainApp />
+    </TripProvider>
   );
 }
